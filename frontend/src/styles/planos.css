@@ -1,0 +1,206 @@
+.planos-stat-card {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stat-amber {
+  background: var(--amber-50);
+  color: var(--amber-700);
+}
+
+.section-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-title-row h2,
+.matriculas-header h2 {
+  font-size: var(--text-lg);
+  color: var(--color-text-primary);
+  font-weight: var(--fw-semibold);
+}
+
+.section-title-row p,
+.matriculas-header p {
+  margin-top: 4px;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.planos-section {
+  margin-bottom: 24px;
+}
+
+.planos-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+.plano-card {
+  position: relative;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: 18px;
+  min-height: 245px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+  transition: var(--transition);
+}
+
+.plano-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+}
+
+.plano-card.popular {
+  border: 2px solid var(--color-primary);
+}
+
+.popular-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: var(--color-primary);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 0 var(--radius-xl) 0 var(--radius-lg);
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.plano-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.plano-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-full);
+  background: var(--blue-50);
+  color: var(--blue-600);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plano-card h3 {
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  font-weight: var(--fw-semibold);
+  margin-bottom: 4px;
+}
+
+.plano-card p {
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  margin-bottom: 16px;
+}
+
+.plano-preco {
+  color: var(--color-text-primary);
+  font-size: 28px;
+  font-weight: var(--fw-bold);
+  margin-bottom: 18px;
+}
+
+.plano-preco span {
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-medium);
+  margin-left: 4px;
+}
+
+.plano-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.matriculas-content {
+  margin-top: 6px;
+}
+
+.matriculas-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.matriculas-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.matriculas-search {
+  width: 280px;
+  flex: unset;
+  background: var(--gray-50);
+}
+
+.planos-table {
+  min-width: 950px;
+}
+
+.valor-cell {
+  color: var(--color-text-primary);
+}
+
+.checkbox-card {
+  height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-medium);
+  background: white;
+}
+
+.checkbox-card input {
+  accent-color: var(--color-primary);
+}
+
+@media (max-width: 1100px) {
+  .planos-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .matriculas-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .matriculas-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .matriculas-search {
+    width: 100%;
+  }
+}
+
+@media (max-width: 700px) {
+  .planos-grid {
+    grid-template-columns: 1fr;
+  }
+}

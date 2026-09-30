@@ -1,0 +1,128 @@
+/* Container flexível geral que alinha o modal central e o bloco lateral */
+.modal-container-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  max-height: 95vh;
+  padding: 10px;
+}
+
+/* O modal principal agora pode se manter fixo */
+.modal.modal-form {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* COLUNA LATERAL - Roda de forma totalmente independente e esconde a barra */
+.modal-satellites-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 340px; 
+  max-height: 90vh;      /* Define uma altura máxima igual ao do modal principal */
+  overflow-y: auto;      /* Permite a rolagem interna e isolada dos cards secundários */
+  padding-right: 4px;    /* Margem de segurança interna */
+  animation: fadeInRight 0.25s ease-out;
+
+  /* Remove a barra de rolagem no Firefox */
+  scrollbar-width: none; 
+  /* Remove a barra de rolagem no IE/Edge antigo */
+  -ms-overflow-style: none; 
+}
+
+/* Oculta a barra de rolagem para navegadores baseados em Webkit (Chrome, Safari, Edge Novo) */
+.modal-satellites-column::-webkit-scrollbar {
+  display: none;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent;
+}
+
+/* Cartões individuais da lateral */
+.modal-satellite-card {
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  padding: 20px;
+  width: 100%;
+  flex-shrink: 0; /* Impede que os cards fiquem esmagados se faltar espaço vertical */
+}
+
+.satellite-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  color: #1e293b;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 8px;
+}
+
+.satellite-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Configurações adicionais de layout */
+.vinculo-divider {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.5px;
+  margin-top: 14px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 2px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #334155;
+  cursor: pointer;
+  user-select: none;
+}
+.senha-container {
+  position: relative;
+  width: 100%;
+}
+
+.senha-container input {
+  width: 100%;
+  padding-right: 45px;
+}
+
+.btn-olho {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #64748b;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

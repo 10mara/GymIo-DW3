@@ -1,0 +1,138 @@
+.gymio-sidebar {
+  width: 200px;
+  min-width: 200px;
+  height: 100vh;
+  background: #1a1f2e;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+}
+
+.gymio-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 16px 16px;
+}
+
+.gymio-sidebar__brand-icon {
+  width: 34px;
+  height: 34px;
+  background: #3b82f6;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.gymio-sidebar__brand-name { font-size: 14px; font-weight: 700; color: #fff; line-height: 1.2; }
+.gymio-sidebar__brand-sub  { font-size: 10px; color: #6b7280; line-height: 1.2; }
+
+.gymio-sidebar__user {
+  margin: 4px 10px 16px;
+  background: #252b3b;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.gymio-sidebar__user:hover { background: #2d3447; }
+
+.gymio-sidebar__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #3b82f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.gymio-sidebar__user-name { font-size: 12px; font-weight: 600; color: #e5e7eb; line-height: 1.3; }
+.gymio-sidebar__user-role { font-size: 10px; color: #22c55e; display: flex; align-items: center; gap: 3px; }
+.gymio-sidebar__user-role::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+.gymio-sidebar__section-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: #4b5563;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 0 16px 6px;
+}
+
+.gymio-sidebar__nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 8px;
+  scrollbar-width: none;
+}
+
+.gymio-sidebar__nav::-webkit-scrollbar { display: none; }
+
+.gymio-sidebar__nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #9ca3af;
+  font-size: 13px;
+  font-weight: 400;
+  transition: all 0.15s;
+  margin-bottom: 1px;
+  text-decoration: none;
+}
+
+.gymio-sidebar__nav-item:hover  { background: #252b3b; color: #e5e7eb; }
+.gymio-sidebar__nav-item.active { background: rgba(59, 130, 246, 0.12); color: #60a5fa; font-weight: 500; }
+
+.gymio-sidebar__nav-chevron {
+  margin-left: auto;
+  opacity: 0.6;
+  display: flex;
+  align-items: center;
+}
+
+.gymio-sidebar__footer {
+  padding: 12px 8px;
+  border-top: 1px solid #252b3b;
+}
+
+.gymio-sidebar__logout {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #6b7280;
+  font-size: 13px;
+  transition: all 0.15s;
+  width: 100%;
+  background: none;
+  border: none;
+}
+
+.gymio-sidebar__logout:hover { background: #2d1a1a; color: #f87171; }

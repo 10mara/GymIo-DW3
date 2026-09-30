@@ -1,0 +1,1268 @@
+openapi: 3.1.0
+
+info:
+  title: GymIO API
+  version: 1.0.0
+  description: |
+    API REST do sistema GymIO.
+
+    O GymIO é um sistema web para gerenciamento interno de academias,
+    desenvolvido durante a disciplina de Projeto Integrador.
+
+    A API permite o gerenciamento de usuários, autenticação,
+    alunos, planos, matrículas e demais recursos administrativos.
+
+  contact:
+    name: Equipe GymIO
+
+servers:
+  - url: http://localhost:3002
+    description: Servidor Local
+
+tags:
+  - name: Autenticação
+    description: Login, cadastro e gerenciamento da sessão do usuário.
+
+  - name: Pessoas
+    description: Operações relacionadas ao gerenciamento de pessoas.
+
+  - name: Planos
+    description: CRUD de planos da academia.
+
+  - name: Matrículas
+    description: Gerenciamento das assinaturas dos alunos.
+
+  - name: Dashboard
+    description: Indicadores administrativos.
+
+security:
+  - CookieAuth: []
+
+components:
+
+  securitySchemes:
+
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: token
+
+  schemas:
+
+    Error:
+
+      type: object
+
+      properties:
+
+        erro:
+          type: string
+          example: Operação não realizada.
+
+    Success:
+
+      type: object
+
+      properties:
+
+        mensagem:
+          type: string
+          example: Operação realizada com sucesso.
+
+    LoginRequest:
+
+      type: object
+
+      required:
+        - email
+        - senha
+
+      properties:
+
+        email:
+          type: string
+          format: email
+          example: administrador@gymio.com
+
+        senha:
+          type: string
+          format: password
+          example: 123456
+
+    RegisterRequest:
+
+      type: object
+
+      required:
+        - nome
+        - cpf
+        - email
+        - telefone
+        - cargo
+        - senha
+        - confirmar
+
+      properties:
+
+        nome:
+          type: string
+          example: João da Silva
+
+        cpf:
+          type: string
+          example: 12345678900
+
+        email:
+          type: string
+          format: email
+          example: joao@email.com
+
+        telefone:
+          type: string
+          example: (44)99999-9999
+
+        cargo:
+          type: string
+          example: Administrador
+
+        senha:
+          type: string
+          format: password
+          example: 123456
+
+        confirmar:
+          type: string
+          format: password
+          example: 123456
+
+    Pessoa:
+
+      type: object
+
+      properties:
+
+        id:
+          type: integer
+          example: 1
+
+        nome:
+          type: string
+          example: João da Silva
+
+        cpf:
+          type: string
+          example: 12345678900
+
+        telefone:
+          type: string
+          example: (44)99999-9999
+
+        email:
+          type: string
+          example: joao@email.com
+
+    Cargo:
+
+      type: object
+
+      properties:
+
+        id:
+          type: integer
+          example: 1
+
+        nome_cargo:
+          type: string
+          example: Professor
+
+    Plano:
+
+      type: object
+
+      required:
+        - nome_plano
+        - valor
+        - duracao_meses
+
+      properties:
+
+        id:
+          type: integer
+          example: 1
+
+        nome_plano:
+          type: string
+          example: Plano Premium
+
+        descricao:
+          type: string
+          example: Acesso ilimitado à academia.
+
+        valor:
+          type: number
+          format: float
+          example: 129.90
+
+        duracao_meses:
+          type: integer
+          example: 12
+
+    PlanoRequest:
+
+      type: object
+
+      required:
+        - nome_plano
+        - valor
+        - duracao_meses
+
+      properties:
+
+        nome_plano:
+          type: string
+          example: Plano Premium
+
+        descricao:
+          type: string
+          example: Plano anual com acesso completo.
+
+        valor:
+          type: number
+          format: float
+          example: 129.90
+
+        duracao_meses:
+          type: integer
+          example: 12
+
+    Matricula:
+
+      type: object
+
+      properties:
+
+        id:
+          type: integer
+          example: 15
+
+        aluno_id:
+          type: integer
+          example: 8
+
+        plano_id:
+          type: integer
+          example: 2
+
+        status:
+          type: string
+          example: Ativa
+
+        data_inicio:
+          type: string
+          format: date
+          example: 2026-06-28
+
+        data_fim:
+          type: string
+          format: date
+          example: 2027-06-28
+
+    MatriculaRequest:
+
+      type: object
+
+      required:
+        - aluno_id
+        - plano_id
+
+      properties:
+
+        aluno_id:
+          type: integer
+          example: 8
+
+        plano_id:
+          type: integer
+          example: 2
+
+    UsuarioLogado:
+
+      type: object
+
+      properties:
+
+        id:
+          type: integer
+          example: 1
+
+        nome:
+          type: string
+          example: João da Silva
+
+        email:
+          type: string
+          example: joao@email.com
+
+        telefone:
+          type: string
+          example: (44)99999-9999
+
+        status:
+          type: string
+          example: Ativo
+
+    LoginResponse:
+
+      type: object
+
+      properties:
+
+        mensagem:
+          type: string
+          example: Login realizado com sucesso.
+
+        user:
+          $ref: "#/components/schemas/UsuarioLogado"
+
+    RegisterResponse:
+
+      type: object
+
+      properties:
+
+        mensagem:
+          type: string
+          example: Cadastro realizado com sucesso.
+
+        user:
+          type: object
+
+        pessoa:
+          $ref: "#/components/schemas/Pessoa"
+
+responses:
+
+  Unauthorized:
+
+    description: Usuário não autenticado.
+
+    content:
+
+      application/json:
+
+        schema:
+          $ref: "#/components/schemas/Error"
+
+  BadRequest:
+
+    description: Requisição inválida.
+
+    content:
+
+      application/json:
+
+        schema:
+          $ref: "#/components/schemas/Error"
+
+  InternalServerError:
+
+    description: Erro interno do servidor.
+
+    content:
+
+      application/json:
+
+        schema:
+          $ref: "#/components/schemas/Error"
+
+paths:
+  /api/auth/register:
+
+    post:
+      tags:
+        - Autenticação
+
+      summary: Cadastrar usuário
+
+      description: |
+        Realiza o cadastro de um novo funcionário no sistema.
+
+        O usuário é criado na autenticação do Supabase e,
+        posteriormente, são registrados os dados nas tabelas
+        pessoa e funcionario.
+
+      security: []
+
+      requestBody:
+        required: true
+
+        content:
+
+          application/json:
+
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+
+      responses:
+
+        "201":
+
+          description: Usuário cadastrado com sucesso.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/RegisterResponse"
+
+        "400":
+
+          description: Dados inválidos ou usuário já existente.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/Error"
+
+              examples:
+
+                campos:
+                  value:
+                    erro: Preencha todos os campos obrigatórios.
+
+                senha:
+                  value:
+                    erro: As senhas não coincidem.
+
+                existente:
+                  value:
+                    erro: Já existe um usuário cadastrado com este CPF ou email.
+
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /api/auth/login:
+
+    post:
+
+      tags:
+        - Autenticação
+
+      summary: Realizar login
+
+      description: |
+        Autentica um usuário utilizando email e senha.
+
+        Em caso de sucesso, um cookie HTTP chamado **token**
+        é criado automaticamente contendo o access token
+        retornado pelo Supabase.
+
+      security: []
+
+      requestBody:
+
+        required: true
+
+        content:
+
+          application/json:
+
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+
+      responses:
+
+        "200":
+
+          description: Login realizado.
+
+          headers:
+
+            Set-Cookie:
+
+              schema:
+                type: string
+
+              description: Cookie contendo o token de autenticação.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+
+        "400":
+
+          description: Campos obrigatórios não enviados.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/Error"
+
+              example:
+
+                erro: Email e senha são obrigatórios.
+
+        "401":
+
+          description: Credenciais inválidas.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/Error"
+
+              example:
+
+                erro: Email ou senha inválidos.
+
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /api/auth/logout:
+
+    post:
+
+      tags:
+        - Autenticação
+
+      summary: Encerrar sessão
+
+      description: |
+        Remove o cookie de autenticação do navegador,
+        encerrando a sessão do usuário.
+
+      responses:
+
+        "200":
+
+          description: Logout realizado.
+
+          content:
+
+            application/json:
+
+              schema:
+
+                type: object
+
+                properties:
+
+                  mensagem:
+                    type: string
+                    example: Logout realizado
+
+  /api/auth/me:
+
+    get:
+
+      tags:
+        - Autenticação
+
+      summary: Dados do usuário autenticado
+
+      description: |
+        Retorna as informações do usuário atualmente autenticado.
+
+        Esta rota utiliza o middleware de autenticação e
+        requer o cookie **token** válido.
+
+      security:
+
+        - CookieAuth: []
+
+      responses:
+
+        "200":
+
+          description: Usuário autenticado.
+
+          content:
+
+            application/json:
+
+              schema:
+
+                type: object
+
+                properties:
+
+                  user:
+                    $ref: "#/components/schemas/UsuarioLogado"
+
+        "401":
+
+          description: Usuário não autenticado ou sessão inválida.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/Error"
+
+              examples:
+
+                token:
+                  value:
+                    erro: Não autenticado
+
+                sessao:
+                  value:
+                    erro: Sessão inválida
+
+                invalido:
+                  value:
+                    erro: Token inválido
+
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+
+
+
+  /api/auth/register:
+
+    post:
+      tags:
+        - Autenticação
+
+      summary: Cadastrar usuário
+
+      description: |
+        Realiza o cadastro de um novo funcionário no sistema.
+
+        O usuário é criado na autenticação do Supabase e,
+        posteriormente, são registrados os dados nas tabelas
+        pessoa e funcionario.
+
+      security: []
+
+      requestBody:
+        required: true
+
+        content:
+
+          application/json:
+
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+
+      responses:
+
+        "201":
+
+          description: Usuário cadastrado com sucesso.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/RegisterResponse"
+
+        "400":
+
+          description: Dados inválidos ou usuário já existente.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/Error"
+
+              examples:
+
+                campos:
+                  value:
+                    erro: Preencha todos os campos obrigatórios.
+
+                senha:
+                  value:
+                    erro: As senhas não coincidem.
+
+                existente:
+                  value:
+                    erro: Já existe um usuário cadastrado com este CPF ou email.
+
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /api/auth/login:
+
+    post:
+
+      tags:
+        - Autenticação
+
+      summary: Realizar login
+
+      description: |
+        Autentica um usuário utilizando email e senha.
+
+        Em caso de sucesso, um cookie HTTP chamado **token**
+        é criado automaticamente contendo o access token
+        retornado pelo Supabase.
+
+      security: []
+
+      requestBody:
+
+        required: true
+
+        content:
+
+          application/json:
+
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+
+      responses:
+
+        "200":
+
+          description: Login realizado.
+
+          headers:
+
+            Set-Cookie:
+
+              schema:
+                type: string
+
+              description: Cookie contendo o token de autenticação.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+
+        "400":
+
+          description: Campos obrigatórios não enviados.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/Error"
+
+              example:
+
+                erro: Email e senha são obrigatórios.
+
+        "401":
+
+          description: Credenciais inválidas.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/Error"
+
+              example:
+
+                erro: Email ou senha inválidos.
+
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /api/auth/logout:
+
+    post:
+
+      tags:
+        - Autenticação
+
+      summary: Encerrar sessão
+
+      description: |
+        Remove o cookie de autenticação do navegador,
+        encerrando a sessão do usuário.
+
+      responses:
+
+        "200":
+
+          description: Logout realizado.
+
+          content:
+
+            application/json:
+
+              schema:
+
+                type: object
+
+                properties:
+
+                  mensagem:
+                    type: string
+                    example: Logout realizado
+
+  /api/auth/me:
+
+    get:
+
+      tags:
+        - Autenticação
+
+      summary: Dados do usuário autenticado
+
+      description: |
+        Retorna as informações do usuário atualmente autenticado.
+
+        Esta rota utiliza o middleware de autenticação e
+        requer o cookie **token** válido.
+
+      security:
+
+        - CookieAuth: []
+
+      responses:
+
+        "200":
+
+          description: Usuário autenticado.
+
+          content:
+
+            application/json:
+
+              schema:
+
+                type: object
+
+                properties:
+
+                  user:
+                    $ref: "#/components/schemas/UsuarioLogado"
+
+        "401":
+
+          description: Usuário não autenticado ou sessão inválida.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/Error"
+
+              examples:
+
+                token:
+                  value:
+                    erro: Não autenticado
+
+                sessao:
+                  value:
+                    erro: Sessão inválida
+
+                invalido:
+                  value:
+                    erro: Token inválido
+
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+        
+  /api/planos:
+
+    get:
+
+      tags:
+        - Planos
+
+      summary: Listar planos
+
+      description: |
+        Retorna todos os planos cadastrados no sistema.
+
+      responses:
+
+        "200":
+
+          description: Lista de planos.
+
+          content:
+
+            application/json:
+
+              schema:
+
+                type: array
+
+                items:
+                  $ref: "#/components/schemas/Plano"
+
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    post:
+
+      tags:
+        - Planos
+
+      summary: Criar plano
+
+      description: |
+        Cadastra um novo plano de academia.
+
+      requestBody:
+
+        required: true
+
+        content:
+
+          application/json:
+
+            schema:
+              $ref: "#/components/schemas/PlanoRequest"
+
+      responses:
+
+        "201":
+
+          description: Plano criado com sucesso.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/Plano"
+
+        "400":
+
+          description: Campos obrigatórios ausentes.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/Error"
+
+              example:
+
+                erro: Campos obrigatórios ausentes
+
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /api/planos/{id}:
+
+    put:
+
+      tags:
+        - Planos
+
+      summary: Atualizar plano
+
+      description: |
+        Atualiza as informações de um plano existente.
+
+      parameters:
+
+        - name: id
+
+          in: path
+
+          required: true
+
+          schema:
+
+            type: integer
+
+          example: 3
+
+      requestBody:
+
+        required: true
+
+        content:
+
+          application/json:
+
+            schema:
+              $ref: "#/components/schemas/PlanoRequest"
+
+      responses:
+
+        "200":
+
+          description: Plano atualizado.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/Plano"
+
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    delete:
+
+      tags:
+        - Planos
+
+      summary: Remover plano
+
+      description: |
+        Remove um plano do sistema.
+
+      parameters:
+
+        - name: id
+
+          in: path
+
+          required: true
+
+          schema:
+
+            type: integer
+
+          example: 3
+
+      responses:
+
+        "200":
+
+          description: Plano removido.
+
+          content:
+
+            application/json:
+
+              schema:
+
+                type: object
+
+                properties:
+
+                  mensagem:
+
+                    type: string
+
+                    example: Plano removido
+
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /api/planos/matriculas:
+
+    get:
+
+      tags:
+        - Matrículas
+
+      summary: Listar matrículas
+
+      description: |
+        Retorna todas as matrículas cadastradas.
+
+      responses:
+
+        "200":
+
+          description: Lista de matrículas.
+
+          content:
+
+            application/json:
+
+              schema:
+
+                type: array
+
+                items:
+                  $ref: "#/components/schemas/Matricula"
+
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    post:
+
+      tags:
+        - Matrículas
+
+      summary: Criar matrícula
+
+      description: |
+        Associa um aluno a um plano.
+
+        Antes da criação é realizada uma verificação para impedir
+        que um aluno possua mais de uma matrícula ativa.
+
+      requestBody:
+
+        required: true
+
+        content:
+
+          application/json:
+
+            schema:
+              $ref: "#/components/schemas/MatriculaRequest"
+
+      responses:
+
+        "201":
+
+          description: Matrícula criada.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/Matricula"
+
+        "400":
+
+          description: Aluno já possui matrícula ativa.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/Error"
+
+              example:
+
+                erro: Aluno já possui matrícula ativa
+
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /api/planos/matriculas/{id}/cancelar:
+
+    patch:
+
+      tags:
+        - Matrículas
+
+      summary: Cancelar matrícula
+
+      description: |
+        Cancela uma matrícula ativa.
+
+      parameters:
+
+        - name: id
+
+          in: path
+
+          required: true
+
+          schema:
+
+            type: integer
+
+          example: 12
+
+      responses:
+
+        "200":
+
+          description: Matrícula cancelada.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/Matricula"
+
+        "500":
+
+          description: Erro ao cancelar matrícula.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/Error"
+
+              example:
+
+                erro: Erro ao cancelar
+
+  /api/planos/matriculas/{id}/renovar:
+
+    patch:
+
+      tags:
+        - Matrículas
+
+      summary: Renovar matrícula
+
+      description: |
+        Renova uma matrícula existente.
+
+      parameters:
+
+        - name: id
+
+          in: path
+
+          required: true
+
+          schema:
+
+            type: integer
+
+          example: 12
+
+      responses:
+
+        "200":
+
+          description: Matrícula renovada.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/Matricula"
+
+        "500":
+
+          description: Erro ao renovar matrícula.
+
+          content:
+
+            application/json:
+
+              schema:
+                $ref: "#/components/schemas/Error"
+
+              example:
+
+                erro: Erro ao renovar
+
+
+
+ 
