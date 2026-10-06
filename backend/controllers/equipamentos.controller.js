@@ -1,16 +1,19 @@
-const supabase = require("../config/supabase");
+const { eq, isNull, asc } = require("drizzle-orm");
+
+const { db } = require("../db");
+const { equipamento } = require("../db/schema");
 
 function mapEquipamentoBancoParaFront(item) {
   return {
     id: item.id,
-    nome: item.nome_equipamento || "",
+    nome: item.nomeEquipamento || "",
     codigo: item.codigo || "",
     categoria: item.categoria || "",
     fabricante: item.fabricante || "",
     modelo: item.modelo || "",
-    dataCompra: item.data_aquisicao || "",
+    dataCompra: item.dataAquisicao || "",
     garantia: item.garantia || "",
-    status: item.status_conservacao || "",
+    status: item.statusConservacao || "",
     localizacao: item.localizacao || "",
     observacoes: item.observacoes || "",
     ultimaManutencao: "-",
@@ -20,19 +23,20 @@ function mapEquipamentoBancoParaFront(item) {
 
 async function listarEquipamentos(req, res) {
   try {
-    const { data, error } = await supabase
-      .from("equipamento")
-      .select("*")
-      .is("deleted_at", null)
-      .order("nome_equipamento", { ascending: true });
+    const data = await db
+      .select()
+      .from(equipamento)
+      .where(isNull(equipamento.deletedAt))
+      .orderBy(asc(equipamento.nomeEquipamento));
 
-    if (error) throw error;
-
-    const equipamentos = (data || []).map(mapEquipamentoBancoParaFront);
-
-    return res.json(equipamentos);
+    return res.json(
+      data.map(mapEquipamentoBancoParaFront)
+    );
   } catch (erro) {
-    console.error("Erro ao listar equipamentos:", erro);
+    console.error(
+      "Erro ao listar equipamentos:",
+      erro
+    );
 
     return res.status(500).json({
       erro: "Erro ao listar equipamentos",
@@ -42,20 +46,38 @@ async function listarEquipamentos(req, res) {
 
 async function buscarEquipamentoPorId(req, res) {
   try {
-    const { id } = req.params;
+    const id = Number(req.params.id);
 
-    const { data, error } = await supabase
-      .from("equipamento")
-      .select("*")
-      .eq("id", id)
-      .is("deleted_at", null)
-      .single();
+    if (Number.isNaN(id)) {
+      return res.status(400).json({
+        erro: "ID do equipamento inválido",
+      });
+    }
 
-    if (error) throw error;
+    const resultado = await db
+      .select()
+      .from(equipamento)
+      .where(
+        eq(equipamento.id, id)
+      );
 
-    return res.json(mapEquipamentoBancoParaFront(data));
+    if (
+      resultado.length === 0 ||
+      resultado[0].deletedAt !== null
+    ) {
+      return res.status(404).json({
+        erro: "Equipamento não encontrado",
+      });
+    }
+
+    return res.json(
+      mapEquipamentoBancoParaFront(resultado[0])
+    );
   } catch (erro) {
-    console.error("Erro ao buscar equipamento:", erro);
+    console.error(
+      "Erro ao buscar equipamento:",
+      erro
+    );
 
     return res.status(500).json({
       erro: "Erro ao buscar equipamento",
@@ -78,36 +100,36 @@ async function criarEquipamento(req, res) {
       observacoes,
     } = req.body;
 
-    if (!nome) {
+    if (!nome || !nome.trim()) {
       return res.status(400).json({
         erro: "Nome do equipamento é obrigatório",
       });
     }
 
-    const { data, error } = await supabase
-      .from("equipamento")
-      .insert([
-        {
-          nome_equipamento: nome,
-          codigo,
-          categoria,
-          fabricante,
-          modelo,
-          data_aquisicao: dataCompra || null,
-          garantia: garantia || null,
-          status_conservacao: status,
-          localizacao,
-          observacoes,
-        },
-      ])
-      .select()
-      .single();
+    const resultado = await db
+      .insert(equipamento)
+      .values({
+        nomeEquipamento: nome.trim(),
+        codigo: codigo || null,
+        categoria: categoria || null,
+        fabricante: fabricante || null,
+        modelo: modelo || null,
+        dataAquisicao: dataCompra || null,
+        garantia: garantia || null,
+        statusConservacao: status || null,
+        localizacao: localizacao || null,
+        observacoes: observacoes || null,
+      })
+      .returning();
 
-    if (error) throw error;
-
-    return res.status(201).json(mapEquipamentoBancoParaFront(data));
+    return res.status(201).json(
+      mapEquipamentoBancoParaFront(resultado[0])
+    );
   } catch (erro) {
-    console.error("Erro ao criar equipamento:", erro);
+    console.error(
+      "Erro ao criar equipamento:",
+      erro
+    );
 
     return res.status(500).json({
       erro: "Erro ao criar equipamento",
@@ -117,7 +139,13 @@ async function criarEquipamento(req, res) {
 
 async function atualizarEquipamento(req, res) {
   try {
-    const { id } = req.params;
+    const id = Number(req.params.id);
+
+    if (Number.isNaN(id)) {
+      return res.status(400).json({
+        erro: "ID do equipamento inválido",
+      });
+    }
 
     const {
       nome,
@@ -132,30 +160,45 @@ async function atualizarEquipamento(req, res) {
       observacoes,
     } = req.body;
 
-    const { data, error } = await supabase
-      .from("equipamento")
-      .update({
-        nome_equipamento: nome,
-        codigo,
-        categoria,
-        fabricante,
-        modelo,
-        data_aquisicao: dataCompra || null,
+    if (!nome || !nome.trim()) {
+      return res.status(400).json({
+        erro: "Nome do equipamento é obrigatório",
+      });
+    }
+
+    const resultado = await db
+      .update(equipamento)
+      .set({
+        nomeEquipamento: nome.trim(),
+        codigo: codigo || null,
+        categoria: categoria || null,
+        fabricante: fabricante || null,
+        modelo: modelo || null,
+        dataAquisicao: dataCompra || null,
         garantia: garantia || null,
-        status_conservacao: status,
-        localizacao,
-        observacoes,
+        statusConservacao: status || null,
+        localizacao: localizacao || null,
+        observacoes: observacoes || null,
       })
-      .eq("id", id)
-      .is("deleted_at", null)
-      .select()
-      .single();
+      .where(
+        eq(equipamento.id, id)
+      )
+      .returning();
 
-    if (error) throw error;
+    if (resultado.length === 0) {
+      return res.status(404).json({
+        erro: "Equipamento não encontrado",
+      });
+    }
 
-    return res.json(mapEquipamentoBancoParaFront(data));
+    return res.json(
+      mapEquipamentoBancoParaFront(resultado[0])
+    );
   } catch (erro) {
-    console.error("Erro ao atualizar equipamento:", erro);
+    console.error(
+      "Erro ao atualizar equipamento:",
+      erro
+    );
 
     return res.status(500).json({
       erro: "Erro ao atualizar equipamento",
@@ -165,22 +208,40 @@ async function atualizarEquipamento(req, res) {
 
 async function excluirEquipamento(req, res) {
   try {
-    const { id } = req.params;
+    const id = Number(req.params.id);
 
-    const { error } = await supabase
-      .from("equipamento")
-      .update({
-        deleted_at: new Date().toISOString(),
+    if (Number.isNaN(id)) {
+      return res.status(400).json({
+        erro: "ID do equipamento inválido",
+      });
+    }
+
+    const resultado = await db
+      .update(equipamento)
+      .set({
+        deletedAt: new Date(),
       })
-      .eq("id", id);
+      .where(
+        eq(equipamento.id, id)
+      )
+      .returning({
+        id: equipamento.id,
+      });
 
-    if (error) throw error;
+    if (resultado.length === 0) {
+      return res.status(404).json({
+        erro: "Equipamento não encontrado",
+      });
+    }
 
     return res.json({
       mensagem: "Equipamento excluído com sucesso",
     });
   } catch (erro) {
-    console.error("Erro ao excluir equipamento:", erro);
+    console.error(
+      "Erro ao excluir equipamento:",
+      erro
+    );
 
     return res.status(500).json({
       erro: "Erro ao excluir equipamento",
