@@ -554,7 +554,7 @@ export default function Pessoa() {
               <AlertTriangle size={20} />
               <div>
                 <strong>Atenção!</strong>
-                <p>Esta ação não poderá ser desfeita.</p>
+                <p>O registro será removido da listagem.</p>
               </div>
             </div>
 

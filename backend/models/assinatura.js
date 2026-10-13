@@ -1,223 +1,187 @@
-const { pool } = require("../config/database");
+const { and, desc, eq, ilike, isNull, ne } = require("drizzle-orm");
 
-class Assinatura {
+const { db } = require("../db");
+const { assinatura, aluno, pessoa, plano } = require("../db/schema");
 
-  static async listar(){
+/* ---------- datas ---------- */
 
-  const query = `
-    SELECT
-      a.id,
-      a.aluno_id,
-      a.plano_id,
-      a.data_inicio,
-      a.data_fim,
-      a.status_assinatura AS status,
-      a.data_assinatura,
-      p.nome AS aluno,
-      pl.nome_plano AS plano
+function paraDataISO(data) {
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, "0");
+  const dia = String(data.getDate()).padStart(2, "0");
 
-      FROM assinatura a
-
-      JOIN aluno al
-      ON al.id=a.aluno_id
-
-      JOIN pessoa p
-      ON p.id=al.pessoa_id
-
-      JOIN plano pl
-      ON pl.id=a.plano_id
-
-      WHERE a.deleted_at IS NULL
-
-      ORDER BY a.data_inicio DESC
-  `;
-
-  const { rows } = await pool.query(query);
-
-  return rows;
+  return `${ano}-${mes}-${dia}`;
 }
 
-  static async alunoPossuiAtiva(
-    aluno_id
-  ){
+function adicionarMeses(data, meses) {
+  const resultado = new Date(data.getFullYear(), data.getMonth() + meses, 1);
 
-    const query=`
-      SELECT *
-      FROM assinatura
+  const ultimoDia = new Date(
+    resultado.getFullYear(),
+    resultado.getMonth() + 1,
+    0
+  ).getDate();
 
-      WHERE aluno_id=$1
-      AND status_assinatura ILIKE 'Ativo'
-      AND deleted_at IS NULL
-    `;
+  resultado.setDate(Math.min(data.getDate(), ultimoDia));
 
-    const { rows } =
-      await pool.query(
-        query,
-        [aluno_id]
-      );
+  return resultado;
+}
 
-    return rows[0];
+/* ---------- consulta com joins (mesmo formato que o front já usa) ---------- */
 
+function consultaDetalhada() {
+  return db
+    .select({
+      id: assinatura.id,
+      aluno_id: assinatura.alunoId,
+      plano_id: assinatura.planoId,
+      data_inicio: assinatura.dataInicio,
+      data_fim: assinatura.dataFim,
+      status: assinatura.statusAssinatura,
+      data_assinatura: assinatura.dataAssinatura,
+      aluno: pessoa.nome,
+      plano: plano.nomePlano,
+    })
+    .from(assinatura)
+    .innerJoin(aluno, eq(aluno.id, assinatura.alunoId))
+    .innerJoin(pessoa, eq(pessoa.id, aluno.pessoaId))
+    .leftJoin(plano, eq(plano.id, assinatura.planoId));
+}
+
+class Assinatura {
+  static async listar() {
+    return consultaDetalhada()
+      .where(isNull(assinatura.deletedAt))
+      .orderBy(desc(assinatura.dataInicio));
   }
 
+  static async buscarPorId(id) {
+    const rows = await consultaDetalhada().where(
+      and(eq(assinatura.id, id), isNull(assinatura.deletedAt))
+    );
 
-  static async criar(
-    aluno_id,
-    plano_id
-  ){
-
-    const planoQuery=`
-      SELECT *
-      FROM plano
-      WHERE id=$1
-    `;
-
-    const plano =
-      await pool.query(
-        planoQuery,
-        [plano_id]
-      );
-
-    if(!plano.rows.length){
-
-      throw new Error(
-        "Plano não encontrado"
-      );
-
-    }
-
-    const meses =
-      plano.rows[0]
-      .duracao_meses;
-
-    const query = `
-      INSERT INTO assinatura(
-        aluno_id,
-        plano_id,
-        data_inicio,
-        data_fim,
-        status_assinatura,
-        data_assinatura
-      )
-
-      VALUES(
-        $1,
-        $2,
-        CURRENT_DATE,
-        CURRENT_DATE + ($3 || ' month')::INTERVAL,
-        'Ativo',
-        CURRENT_DATE
-      )
-
-      RETURNING *
-    `;
-
-    const { rows } =
-      await pool.query(
-        query,
-        [
-          aluno_id,
-          plano_id,
-          meses
-        ]
-      );
-
-    return rows[0];
-
+    return rows[0] || null;
   }
 
-
-  static async cancelar(id){
-
-    const query = `
-      UPDATE assinatura
-      SET status_assinatura='Cancelado'
-
-      WHERE id=$1
-
-      RETURNING *
-    `;
-
-    const { rows } =
-      await pool.query(
-        query,
-        [id]
-      );
-
-    return rows[0];
-
-  }
-
-
-  static async renovar(id){
-
-    const query = `
-      UPDATE assinatura
-
-      SET
-      data_inicio=CURRENT_DATE,
-
-      data_fim=
-      CURRENT_DATE +
-      (
-        (
-          SELECT duracao_meses
-          FROM plano
-          WHERE id=assinatura.plano_id
-        ) || ' month'
-      )::INTERVAL,
-
-      status_assinatura='Ativo'
-
-      WHERE id=$1
-
-      RETURNING *
-    `;
-
-    const { rows } =
-      await pool.query(
-        query,
-        [id]
-      );
-
-    return rows[0];
-
-  }
-
-  static async atualizar(id, dados){
-
-    const {
-      plano_id,
-      status_assinatura
-    } = dados;
-
-    const query = `
-      UPDATE assinatura
-      SET
-      plano_id=$1,
-      status_assinatura=$2
-
-      WHERE id=$3
-
-      RETURNING *
-    `;
-
-    const valores = [
-      plano_id,
-      status_assinatura,
-      id
+  /**
+   * Matrícula ativa do aluno (ou null).
+   * `ignorarId` serve para não comparar a matrícula com ela mesma.
+   */
+  static async alunoPossuiAtiva(aluno_id, ignorarId = null) {
+    const condicoes = [
+      eq(assinatura.alunoId, aluno_id),
+      ilike(assinatura.statusAssinatura, "Ativo"),
+      isNull(assinatura.deletedAt),
     ];
 
-    const { rows } =
-      await pool.query(
-        query,
-        valores
-      );
+    if (ignorarId) {
+      condicoes.push(ne(assinatura.id, ignorarId));
+    }
 
-    return rows[0];
+    const rows = await consultaDetalhada()
+      .where(and(...condicoes))
+      .orderBy(desc(assinatura.dataFim));
 
+    return rows[0] || null;
   }
 
+  /**
+   * Para o Controle de Acesso: true se o aluno tem matrícula
+   * ativa e ainda dentro da validade.
+   */
+  static async alunoTemMatriculaValida(aluno_id) {
+    const ativa = await Assinatura.alunoPossuiAtiva(aluno_id);
+
+    if (!ativa || !ativa.data_fim) return false;
+
+    return ativa.data_fim >= paraDataISO(new Date());
+  }
+
+  static async alunoExiste(aluno_id) {
+    const rows = await db
+      .select({ id: aluno.id })
+      .from(aluno)
+      .where(and(eq(aluno.id, aluno_id), isNull(aluno.deletedAt)));
+
+    return rows.length > 0;
+  }
+
+  static async criar(aluno_id, plano_id, duracaoMeses) {
+    const hoje = new Date();
+
+    const rows = await db
+      .insert(assinatura)
+      .values({
+        alunoId: aluno_id,
+        planoId: plano_id,
+        dataInicio: paraDataISO(hoje),
+        dataFim: paraDataISO(adicionarMeses(hoje, duracaoMeses)),
+        statusAssinatura: "Ativo",
+        dataAssinatura: paraDataISO(hoje),
+      })
+      .returning({ id: assinatura.id });
+
+    return Assinatura.buscarPorId(rows[0].id);
+  }
+
+  static async cancelar(id) {
+    const rows = await db
+      .update(assinatura)
+      .set({ statusAssinatura: "Cancelado" })
+      .where(and(eq(assinatura.id, id), isNull(assinatura.deletedAt)))
+      .returning({ id: assinatura.id });
+
+    if (!rows.length) return null;
+
+    return Assinatura.buscarPorId(id);
+  }
+
+  static async renovar(id, duracaoMeses) {
+    const hoje = new Date();
+
+    const rows = await db
+      .update(assinatura)
+      .set({
+        dataInicio: paraDataISO(hoje),
+        dataFim: paraDataISO(adicionarMeses(hoje, duracaoMeses)),
+        statusAssinatura: "Ativo",
+      })
+      .where(and(eq(assinatura.id, id), isNull(assinatura.deletedAt)))
+      .returning({ id: assinatura.id });
+
+    if (!rows.length) return null;
+
+    return Assinatura.buscarPorId(id);
+  }
+
+  static async atualizar(id, { plano_id, status_assinatura }) {
+    const valores = {};
+
+    if (plano_id !== undefined) valores.planoId = plano_id;
+    if (status_assinatura !== undefined) {
+      valores.statusAssinatura = status_assinatura;
+    }
+
+    const rows = await db
+      .update(assinatura)
+      .set(valores)
+      .where(and(eq(assinatura.id, id), isNull(assinatura.deletedAt)))
+      .returning({ id: assinatura.id });
+
+    if (!rows.length) return null;
+
+    return Assinatura.buscarPorId(id);
+  }
+
+  static async deletar(id) {
+    const rows = await db
+      .update(assinatura)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(assinatura.id, id), isNull(assinatura.deletedAt)))
+      .returning({ id: assinatura.id });
+
+    return rows.length > 0;
+  }
 }
 
 module.exports = Assinatura;
