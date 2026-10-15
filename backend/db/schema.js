@@ -57,40 +57,25 @@ const pessoa = pgTable(
      */
     authId: uuid("auth_id"),
 
-    passwordResetToken: text(
-      "password_reset_token"
-    ),
+    passwordResetToken: text("password_reset_token"),
 
-    passwordResetExpires: timestamp(
-      "password_reset_expires",
-      {
-        withTimezone: true,
-      }
-    ),
+    passwordResetExpires: timestamp("password_reset_expires", {
+      withTimezone: true,
+    }),
 
-    deletedAt: timestamp(
-      "deleted_at",
-      {
-        withTimezone: true,
-      }
-    ),
+    deletedAt: timestamp("deleted_at", {
+      withTimezone: true,
+    }),
   },
 
   (table) => ({
-    pessoaCpfIdx: uniqueIndex(
-      "pessoa_cpf_unique_idx"
-    ).on(table.cpf),
+    pessoaCpfIdx: uniqueIndex("pessoa_cpf_unique_idx").on(table.cpf),
 
-    pessoaEmailIdx: index(
-      "pessoa_email_idx"
-    ).on(table.email),
+    pessoaEmailIdx: index("pessoa_email_idx").on(table.email),
 
-    pessoaDeletedIdx: index(
-      "pessoa_deleted_at_idx"
-    ).on(table.deletedAt),
-  })
+    pessoaDeletedIdx: index("pessoa_deleted_at_idx").on(table.deletedAt),
+  }),
 );
-
 
 /**
  * ============================================================
@@ -107,41 +92,28 @@ const cargo = pgTable(
       length: 100,
     }).notNull(),
 
-    descricaoCargo: text(
-      "descricao_cargo"
-    ),
+    descricaoCargo: text("descricao_cargo"),
 
-    salarioBase: numeric(
-      "salario_base",
-      {
-        precision: 12,
-        scale: 2,
-      }
-    ),
+    salarioBase: numeric("salario_base", {
+      precision: 12,
+      scale: 2,
+    }),
 
     status: varchar("status", {
       length: 30,
     }).default("Ativo"),
 
-    deletedAt: timestamp(
-      "deleted_at",
-      {
-        withTimezone: true,
-      }
-    ),
+    deletedAt: timestamp("deleted_at", {
+      withTimezone: true,
+    }),
   },
 
   (table) => ({
-    cargoNomeIdx: index(
-      "cargo_nome_idx"
-    ).on(table.nomeCargo),
+    cargoNomeIdx: index("cargo_nome_idx").on(table.nomeCargo),
 
-    cargoDeletedIdx: index(
-      "cargo_deleted_at_idx"
-    ).on(table.deletedAt),
-  })
+    cargoDeletedIdx: index("cargo_deleted_at_idx").on(table.deletedAt),
+  }),
 );
-
 
 /**
  * ============================================================
@@ -160,37 +132,24 @@ const plano = pgTable(
 
     descricao: text("descricao"),
 
-    valor: numeric(
-      "valor",
-      {
-        precision: 12,
-        scale: 2,
-      }
-    ).notNull(),
+    valor: numeric("valor", {
+      precision: 12,
+      scale: 2,
+    }).notNull(),
 
-    duracaoMeses: integer(
-      "duracao_meses"
-    ).notNull(),
+    duracaoMeses: integer("duracao_meses").notNull(),
 
-    deletedAt: timestamp(
-      "deleted_at",
-      {
-        withTimezone: true,
-      }
-    ),
+    deletedAt: timestamp("deleted_at", {
+      withTimezone: true,
+    }),
   },
 
   (table) => ({
-    planoNomeIdx: index(
-      "plano_nome_idx"
-    ).on(table.nomePlano),
+    planoNomeIdx: index("plano_nome_idx").on(table.nomePlano),
 
-    planoDeletedIdx: index(
-      "plano_deleted_at_idx"
-    ).on(table.deletedAt),
-  })
+    planoDeletedIdx: index("plano_deleted_at_idx").on(table.deletedAt),
+  }),
 );
-
 
 /**
  * ============================================================
@@ -203,9 +162,7 @@ const aluno = pgTable(
   {
     id: serial("id").primaryKey(),
 
-    pessoaId: integer(
-      "pessoa_id"
-    )
+    pessoaId: integer("pessoa_id")
       .notNull()
       .references(() => pessoa.id, {
         onDelete: "restrict",
@@ -214,35 +171,25 @@ const aluno = pgTable(
 
     status: varchar("status", {
       length: 30,
-    }).notNull().default("Ativo"),
+    })
+      .notNull()
+      .default("Ativo"),
 
-    dataMatricula: date(
-      "data_matricula"
-    ),
+    dataMatricula: date("data_matricula"),
 
-    deletedAt: timestamp(
-      "deleted_at",
-      {
-        withTimezone: true,
-      }
-    ),
+    deletedAt: timestamp("deleted_at", {
+      withTimezone: true,
+    }),
   },
 
   (table) => ({
-    alunoPessoaIdx: index(
-      "aluno_pessoa_id_idx"
-    ).on(table.pessoaId),
+    alunoPessoaIdx: index("aluno_pessoa_id_idx").on(table.pessoaId),
 
-    alunoStatusIdx: index(
-      "aluno_status_idx"
-    ).on(table.status),
+    alunoStatusIdx: index("aluno_status_idx").on(table.status),
 
-    alunoDeletedIdx: index(
-      "aluno_deleted_at_idx"
-    ).on(table.deletedAt),
-  })
+    alunoDeletedIdx: index("aluno_deleted_at_idx").on(table.deletedAt),
+  }),
 );
-
 
 /**
  * ============================================================
@@ -255,26 +202,19 @@ const funcionario = pgTable(
   {
     id: serial("id").primaryKey(),
 
-    pessoaId: integer(
-      "pessoa_id"
-    )
+    pessoaId: integer("pessoa_id")
       .notNull()
       .references(() => pessoa.id, {
         onDelete: "restrict",
         onUpdate: "cascade",
       }),
 
-    cargoId: integer(
-      "cargo_id"
-    )
-      .references(() => cargo.id, {
-        onDelete: "set null",
-        onUpdate: "cascade",
-      }),
+    cargoId: integer("cargo_id").references(() => cargo.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
 
-    dataAdmissao: date(
-      "data_admissao"
-    ),
+    dataAdmissao: date("data_admissao"),
 
     ctps: varchar("ctps", {
       length: 50,
@@ -282,39 +222,30 @@ const funcionario = pgTable(
 
     status: varchar("status", {
       length: 30,
-    }).notNull().default("Ativo"),
+    })
+      .notNull()
+      .default("Ativo"),
 
-    salario: numeric(
-      "salario",
-      {
-        precision: 12,
-        scale: 2,
-      }
-    ),
+    salario: numeric("salario", {
+      precision: 12,
+      scale: 2,
+    }),
 
-    deletedAt: timestamp(
-      "deleted_at",
-      {
-        withTimezone: true,
-      }
-    ),
+    deletedAt: timestamp("deleted_at", {
+      withTimezone: true,
+    }),
   },
 
   (table) => ({
-    funcionarioPessoaIdx: index(
-      "funcionario_pessoa_id_idx"
-    ).on(table.pessoaId),
+    funcionarioPessoaIdx: index("funcionario_pessoa_id_idx").on(table.pessoaId),
 
-    funcionarioCargoIdx: index(
-      "funcionario_cargo_id_idx"
-    ).on(table.cargoId),
+    funcionarioCargoIdx: index("funcionario_cargo_id_idx").on(table.cargoId),
 
-    funcionarioDeletedIdx: index(
-      "funcionario_deleted_at_idx"
-    ).on(table.deletedAt),
-  })
+    funcionarioDeletedIdx: index("funcionario_deleted_at_idx").on(
+      table.deletedAt,
+    ),
+  }),
 );
-
 
 /**
  * ============================================================
@@ -327,69 +258,49 @@ const assinatura = pgTable(
   {
     id: serial("id").primaryKey(),
 
-    alunoId: integer(
-      "aluno_id"
-    )
+    alunoId: integer("aluno_id")
       .notNull()
       .references(() => aluno.id, {
         onDelete: "restrict",
         onUpdate: "cascade",
       }),
 
-    planoId: integer(
-      "plano_id"
-    )
-      .references(() => plano.id, {
-        onDelete: "set null",
-        onUpdate: "cascade",
-      }),
+    planoId: integer("plano_id").references(() => plano.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
 
-    dataInicio: date(
-      "data_inicio"
-    ),
+    dataInicio: date("data_inicio"),
 
-    dataFim: date(
-      "data_fim"
-    ),
+    dataFim: date("data_fim"),
 
-    statusAssinatura: varchar(
-      "status_assinatura",
-      {
-        length: 30,
-      }
-    ).notNull().default("Ativo"),
+    statusAssinatura: varchar("status_assinatura", {
+      length: 30,
+    })
+      .notNull()
+      .default("Ativo"),
 
-    dataAssinatura: date(
-      "data_assinatura"
-    ),
+    dataAssinatura: date("data_assinatura"),
 
-    deletedAt: timestamp(
-      "deleted_at",
-      {
-        withTimezone: true,
-      }
-    ),
+    deletedAt: timestamp("deleted_at", {
+      withTimezone: true,
+    }),
   },
 
   (table) => ({
-    assinaturaAlunoIdx: index(
-      "assinatura_aluno_id_idx"
-    ).on(table.alunoId),
+    assinaturaAlunoIdx: index("assinatura_aluno_id_idx").on(table.alunoId),
 
-    assinaturaPlanoIdx: index(
-      "assinatura_plano_id_idx"
-    ).on(table.planoId),
+    assinaturaPlanoIdx: index("assinatura_plano_id_idx").on(table.planoId),
 
-    assinaturaStatusIdx: index(
-      "assinatura_status_idx"
-    ).on(table.statusAssinatura),
+    assinaturaStatusIdx: index("assinatura_status_idx").on(
+      table.statusAssinatura,
+    ),
 
-    assinaturaDeletedIdx: index(
-      "assinatura_deleted_at_idx"
-    ).on(table.deletedAt),
-  })
+    assinaturaDeletedIdx: index("assinatura_deleted_at_idx").on(
+      table.deletedAt,
+    ),
+  }),
 );
-
 
 /**
  * ============================================================
@@ -402,72 +313,46 @@ const acesso = pgTable(
   {
     id: serial("id").primaryKey(),
 
-    alunoId: integer(
-      "aluno_id"
-    ).references(() => aluno.id, {
+    alunoId: integer("aluno_id").references(() => aluno.id, {
       onDelete: "set null",
       onUpdate: "cascade",
     }),
 
-    tipoAcesso: varchar(
-      "tipo_acesso",
-      {
-        length: 30,
-      }
-    ).notNull(),
+    tipoAcesso: varchar("tipo_acesso", {
+      length: 30,
+    }).notNull(),
 
-    dataHoraAcesso: timestamp(
-      "data_hora_acesso",
-      {
-        withTimezone: true,
-      }
-    ).notNull(),
+    dataHoraAcesso: timestamp("data_hora_acesso", {
+      withTimezone: true,
+    }).notNull(),
 
-    horaEntrada: timestamp(
-      "hora_entrada",
-      {
-        withTimezone: true,
-      }
-    ),
+    horaEntrada: timestamp("hora_entrada", {
+      withTimezone: true,
+    }),
 
-    horaSaida: timestamp(
-      "hora_saida",
-      {
-        withTimezone: true,
-      }
-    ),
+    horaSaida: timestamp("hora_saida", {
+      withTimezone: true,
+    }),
 
     status: varchar("status", {
       length: 30,
     }),
 
-    deletedAt: timestamp(
-      "deleted_at",
-      {
-        withTimezone: true,
-      }
-    ),
+    deletedAt: timestamp("deleted_at", {
+      withTimezone: true,
+    }),
   },
 
   (table) => ({
-    acessoAlunoIdx: index(
-      "acesso_aluno_id_idx"
-    ).on(table.alunoId),
+    acessoAlunoIdx: index("acesso_aluno_id_idx").on(table.alunoId),
 
-    acessoDataIdx: index(
-      "acesso_data_hora_idx"
-    ).on(table.dataHoraAcesso),
+    acessoDataIdx: index("acesso_data_hora_idx").on(table.dataHoraAcesso),
 
-    acessoTipoIdx: index(
-      "acesso_tipo_idx"
-    ).on(table.tipoAcesso),
+    acessoTipoIdx: index("acesso_tipo_idx").on(table.tipoAcesso),
 
-    acessoDeletedIdx: index(
-      "acesso_deleted_at_idx"
-    ).on(table.deletedAt),
-  })
+    acessoDeletedIdx: index("acesso_deleted_at_idx").on(table.deletedAt),
+  }),
 );
-
 
 /**
  * ============================================================
@@ -480,31 +365,24 @@ const conta = pgTable(
   {
     id: serial("id").primaryKey(),
 
-    saldo: numeric(
-      "saldo",
-      {
-        precision: 14,
-        scale: 2,
-      }
-    ).notNull().default("0"),
+    saldo: numeric("saldo", {
+      precision: 14,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
 
     data: date("data"),
 
-    deleteAt: timestamp(
-      "delete_at",
-      {
-        withTimezone: true,
-      }
-    ),
+    deleteAt: timestamp("delete_at", {
+      withTimezone: true,
+    }),
   },
 
   (table) => ({
-    contaDeleteIdx: index(
-      "conta_delete_at_idx"
-    ).on(table.deleteAt),
-  })
+    contaDeleteIdx: index("conta_delete_at_idx").on(table.deleteAt),
+  }),
 );
-
 
 /**
  * ============================================================
@@ -515,84 +393,31 @@ const conta = pgTable(
 const equipamento = pgTable(
   "equipamento",
   {
-    id: serial("id").primaryKey(),
+    id: uuid("id").defaultRandom().primaryKey(),
 
-    nomeEquipamento: varchar(
-      "nome_equipamento",
-      {
-        length: 150,
-      }
-    ).notNull(),
-
-    codigo: varchar("codigo", {
-      length: 80,
+    nomeEquipamento: text("nome_equipamento").notNull(),
+    dataAquisicao: date("data_aquisicao"),
+    statusConservacao: text("status_conservacao"),
+    deletedAt: timestamp("deleted_at", {
+      withTimezone: true,
     }),
 
-    categoria: varchar("categoria", {
-      length: 100,
-    }),
-
-    fabricante: varchar("fabricante", {
-      length: 100,
-    }),
-
-    modelo: varchar("modelo", {
-      length: 100,
-    }),
-
-    dataAquisicao: date(
-      "data_aquisicao"
-    ),
-
-    garantia: varchar("garantia", {
-      length: 100,
-    }),
-
-    statusConservacao: varchar(
-      "status_conservacao",
-      {
-        length: 50,
-      }
-    ),
-
-    localizacao: varchar(
-      "localizacao",
-      {
-        length: 150,
-      }
-    ),
-
-    observacoes: text(
-      "observacoes"
-    ),
-
-    ultimaManutencaoId: integer(
-      "ultima_manutencao_id"
-    ),
-
-    deletedAt: timestamp(
-      "deleted_at",
-      {
-        withTimezone: true,
-      }
-    ),
+    codigo: text("codigo"),
+    categoria: text("categoria"),
+    fabricante: text("fabricante"),
+    modelo: text("modelo"),
+    garantia: date("garantia"),
+    localizacao: text("localizacao"),
+    observacoes: text("observacoes"),
   },
-
   (table) => ({
-    equipamentoNomeIdx: index(
-      "equipamento_nome_idx"
-    ).on(table.nomeEquipamento),
-
-    equipamentoCodigoIdx: index(
-      "equipamento_codigo_idx"
-    ).on(table.codigo),
-
-    equipamentoDeletedIdx: index(
-      "equipamento_deleted_at_idx"
-    ).on(table.deletedAt),
-  })
+    equipamentoNomeIdx: index("equipamento_nome_idx").on(table.nomeEquipamento),
+    equipamentoCodigoIdx: index("equipamento_codigo_idx").on(table.codigo),
+    equipamentoDeletedIdx: index("equipamento_deleted_at_idx").on(
+      table.deletedAt,
+    ),
+  }),
 );
-
 
 /**
  * ============================================================
@@ -603,67 +428,38 @@ const equipamento = pgTable(
 const manutencaoEquipamento = pgTable(
   "manutencao_equipamento",
   {
-    id: serial("id").primaryKey(),
+    id: uuid("id").defaultRandom().primaryKey(),
 
-    equipamentoId: integer(
-      "equipamento_id"
-    )
-      .notNull()
-      .references(() => equipamento.id, {
-        onDelete: "restrict",
-        onUpdate: "cascade",
-      }),
-
-    tipoManutencao: varchar(
-      "tipo_manutencao",
-      {
-        length: 50,
-      }
-    ),
-
-    dataManutencao: date(
-      "data_manutencao"
-    ),
-
-    tecnico: varchar("tecnico", {
-      length: 150,
+    equipamentoId: uuid("equipamento_id").references(() => equipamento.id, {
+      onDelete: "no action",
+      onUpdate: "no action",
     }),
 
-    custo: numeric(
-      "custo",
-      {
-        precision: 12,
-        scale: 2,
-      }
-    ).default("0"),
+    funcionarioId: uuid("funcionario_id"),
 
-    descricaoServico: text(
-      "descricao_servico"
-    ),
+    dataManutencao: date("data_manutencao").defaultNow(),
 
-    deletedAt: timestamp(
-      "deleted_at",
-      {
-        withTimezone: true,
-      }
-    ),
+    descricaoServico: text("descricao_servico"),
+    custo: numeric("custo"),
+    deletedAt: timestamp("deleted_at", {
+      withTimezone: true,
+    }),
+    dataFinalizacao: date("data_finalizacao"),
+    tipoManutencao: text("tipo_manutencao"),
+    tecnico: text("tecnico"),
   },
-
   (table) => ({
-    manutencaoEquipamentoIdx: index(
-      "manutencao_equipamento_id_idx"
-    ).on(table.equipamentoId),
+    manutencaoEquipamentoIdx: index("manutencao_equipamento_id_idx").on(
+      table.equipamentoId,
+    ),
 
-    manutencaoDataIdx: index(
-      "manutencao_data_idx"
-    ).on(table.dataManutencao),
+    manutencaoDataIdx: index("manutencao_data_idx").on(table.dataManutencao),
 
-    manutencaoDeletedIdx: index(
-      "manutencao_deleted_at_idx"
-    ).on(table.deletedAt),
-  })
+    manutencaoDeletedIdx: index("manutencao_deleted_at_idx").on(
+      table.deletedAt,
+    ),
+  }),
 );
-
 
 /**
  * ============================================================
@@ -676,26 +472,18 @@ const movimentacaoFinanceira = pgTable(
   {
     id: serial("id").primaryKey(),
 
-    tipoMovimentacao: varchar(
-      "tipo_movimentacao",
-      {
-        length: 30,
-      }
-    ).notNull(),
+    tipoMovimentacao: varchar("tipo_movimentacao", {
+      length: 30,
+    }).notNull(),
 
     descricao: text("descricao"),
 
-    valor: numeric(
-      "valor",
-      {
-        precision: 14,
-        scale: 2,
-      }
-    ).notNull(),
+    valor: numeric("valor", {
+      precision: 14,
+      scale: 2,
+    }).notNull(),
 
-    vencimento: date(
-      "vencimento"
-    ),
+    vencimento: date("vencimento"),
 
     status: varchar("status", {
       length: 50,
@@ -705,79 +493,62 @@ const movimentacaoFinanceira = pgTable(
       length: 100,
     }),
 
-    dataMovimentacao: timestamp(
-      "data_movimentacao",
-      {
-        withTimezone: true,
-      }
-    ).notNull().defaultNow(),
+    dataMovimentacao: timestamp("data_movimentacao", {
+      withTimezone: true,
+    })
+      .notNull()
+      .defaultNow(),
 
-    alunoId: integer(
-      "aluno_id"
-    ).references(() => aluno.id, {
+    alunoId: integer("aluno_id").references(() => aluno.id, {
       onDelete: "set null",
       onUpdate: "cascade",
     }),
 
-    assinaturaId: integer(
-      "assinatura_id"
-    ).references(() => assinatura.id, {
+    assinaturaId: integer("assinatura_id").references(() => assinatura.id, {
       onDelete: "set null",
       onUpdate: "cascade",
     }),
 
-    manutencaoId: integer(
-      "manutencao_id"
-    ).references(
+    manutencaoId: uuid("manutencao_id").references(
       () => manutencaoEquipamento.id,
       {
-        onDelete: "set null",
-        onUpdate: "cascade",
-      }
+        onDelete: "no action",
+        onUpdate: "no action",
+      },
     ),
 
-    contaId: integer(
-      "conta_id"
-    ).references(() => conta.id, {
+    contaId: integer("conta_id").references(() => conta.id, {
       onDelete: "set null",
       onUpdate: "cascade",
     }),
 
-    deletedAt: timestamp(
-      "deleted_at",
-      {
-        withTimezone: true,
-      }
-    ),
+    deletedAt: timestamp("deleted_at", {
+      withTimezone: true,
+    }),
   },
 
   (table) => ({
-    movimentacaoAlunoIdx: index(
-      "movimentacao_aluno_id_idx"
-    ).on(table.alunoId),
+    movimentacaoAlunoIdx: index("movimentacao_aluno_id_idx").on(table.alunoId),
 
-    movimentacaoAssinaturaIdx: index(
-      "movimentacao_assinatura_id_idx"
-    ).on(table.assinaturaId),
+    movimentacaoAssinaturaIdx: index("movimentacao_assinatura_id_idx").on(
+      table.assinaturaId,
+    ),
 
-    movimentacaoManutencaoIdx: index(
-      "movimentacao_manutencao_id_idx"
-    ).on(table.manutencaoId),
+    movimentacaoManutencaoIdx: index("movimentacao_manutencao_id_idx").on(
+      table.manutencaoId,
+    ),
 
-    movimentacaoContaIdx: index(
-      "movimentacao_conta_id_idx"
-    ).on(table.contaId),
+    movimentacaoContaIdx: index("movimentacao_conta_id_idx").on(table.contaId),
 
-    movimentacaoDataIdx: index(
-      "movimentacao_data_idx"
-    ).on(table.dataMovimentacao),
+    movimentacaoDataIdx: index("movimentacao_data_idx").on(
+      table.dataMovimentacao,
+    ),
 
-    movimentacaoDeletedIdx: index(
-      "movimentacao_deleted_at_idx"
-    ).on(table.deletedAt),
-  })
+    movimentacaoDeletedIdx: index("movimentacao_deleted_at_idx").on(
+      table.deletedAt,
+    ),
+  }),
 );
-
 
 /**
  * ============================================================
@@ -790,9 +561,7 @@ const controlePonto = pgTable(
   {
     id: serial("id").primaryKey(),
 
-    funcionarioId: integer(
-      "funcionario_id"
-    )
+    funcionarioId: integer("funcionario_id")
       .notNull()
       .references(() => funcionario.id, {
         onDelete: "restrict",
@@ -801,41 +570,29 @@ const controlePonto = pgTable(
 
     data: date("data").notNull(),
 
-    horaEntrada: time(
-      "hora_entrada"
-    ),
+    horaEntrada: time("hora_entrada"),
 
-    horaSaida: time(
-      "hora_saida"
-    ),
+    horaSaida: time("hora_saida"),
 
     status: varchar("status", {
       length: 30,
     }),
 
-    deletedAt: timestamp(
-      "deleted_at",
-      {
-        withTimezone: true,
-      }
-    ),
+    deletedAt: timestamp("deleted_at", {
+      withTimezone: true,
+    }),
   },
 
   (table) => ({
-    pontoFuncionarioIdx: index(
-      "controle_ponto_funcionario_id_idx"
-    ).on(table.funcionarioId),
+    pontoFuncionarioIdx: index("controle_ponto_funcionario_id_idx").on(
+      table.funcionarioId,
+    ),
 
-    pontoDataIdx: index(
-      "controle_ponto_data_idx"
-    ).on(table.data),
+    pontoDataIdx: index("controle_ponto_data_idx").on(table.data),
 
-    pontoDeletedIdx: index(
-      "controle_ponto_deleted_at_idx"
-    ).on(table.deletedAt),
-  })
+    pontoDeletedIdx: index("controle_ponto_deleted_at_idx").on(table.deletedAt),
+  }),
 );
-
 
 /**
  * ============================================================
@@ -843,186 +600,118 @@ const controlePonto = pgTable(
  * ============================================================
  */
 
-const pessoaRelations = relations(
-  pessoa,
-  ({ many }) => ({
-    alunos: many(aluno),
-    funcionarios: many(funcionario),
-  })
-);
+const pessoaRelations = relations(pessoa, ({ many }) => ({
+  alunos: many(aluno),
+  funcionarios: many(funcionario),
+}));
 
+const alunoRelations = relations(aluno, ({ one, many }) => ({
+  pessoa: one(pessoa, {
+    fields: [aluno.pessoaId],
+    references: [pessoa.id],
+  }),
 
-const alunoRelations = relations(
-  aluno,
+  assinaturas: many(assinatura),
+
+  acessos: many(acesso),
+
+  movimentacoesFinanceiras: many(movimentacaoFinanceira),
+}));
+
+const cargoRelations = relations(cargo, ({ many }) => ({
+  funcionarios: many(funcionario),
+}));
+
+const funcionarioRelations = relations(funcionario, ({ one, many }) => ({
+  pessoa: one(pessoa, {
+    fields: [funcionario.pessoaId],
+    references: [pessoa.id],
+  }),
+
+  cargo: one(cargo, {
+    fields: [funcionario.cargoId],
+    references: [cargo.id],
+  }),
+
+  controlesPonto: many(controlePonto),
+}));
+
+const planoRelations = relations(plano, ({ many }) => ({
+  assinaturas: many(assinatura),
+}));
+
+const assinaturaRelations = relations(assinatura, ({ one, many }) => ({
+  aluno: one(aluno, {
+    fields: [assinatura.alunoId],
+    references: [aluno.id],
+  }),
+
+  plano: one(plano, {
+    fields: [assinatura.planoId],
+    references: [plano.id],
+  }),
+
+  movimentacoesFinanceiras: many(movimentacaoFinanceira),
+}));
+
+const acessoRelations = relations(acesso, ({ one }) => ({
+  aluno: one(aluno, {
+    fields: [acesso.alunoId],
+    references: [aluno.id],
+  }),
+}));
+
+const equipamentoRelations = relations(equipamento, ({ many }) => ({
+  manutencoes: many(manutencaoEquipamento),
+}));
+
+const manutencaoEquipamentoRelations = relations(
+  manutencaoEquipamento,
   ({ one, many }) => ({
-    pessoa: one(pessoa, {
-      fields: [aluno.pessoaId],
-      references: [pessoa.id],
+    equipamento: one(equipamento, {
+      fields: [manutencaoEquipamento.equipamentoId],
+      references: [equipamento.id],
     }),
 
-    assinaturas: many(assinatura),
-
-    acessos: many(acesso),
-
-    movimentacoesFinanceiras:
-      many(movimentacaoFinanceira),
-  })
+    movimentacoesFinanceiras: many(movimentacaoFinanceira),
+  }),
 );
 
+const contaRelations = relations(conta, ({ many }) => ({
+  movimentacoesFinanceiras: many(movimentacaoFinanceira),
+}));
 
-const cargoRelations = relations(
-  cargo,
-  ({ many }) => ({
-    funcionarios: many(funcionario),
-  })
-);
-
-
-const funcionarioRelations = relations(
-  funcionario,
-  ({ one, many }) => ({
-    pessoa: one(pessoa, {
-      fields: [funcionario.pessoaId],
-      references: [pessoa.id],
-    }),
-
-    cargo: one(cargo, {
-      fields: [funcionario.cargoId],
-      references: [cargo.id],
-    }),
-
-    controlesPonto: many(controlePonto),
-  })
-);
-
-
-const planoRelations = relations(
-  plano,
-  ({ many }) => ({
-    assinaturas: many(assinatura),
-  })
-);
-
-
-const assinaturaRelations = relations(
-  assinatura,
-  ({ one, many }) => ({
-    aluno: one(aluno, {
-      fields: [assinatura.alunoId],
-      references: [aluno.id],
-    }),
-
-    plano: one(plano, {
-      fields: [assinatura.planoId],
-      references: [plano.id],
-    }),
-
-    movimentacoesFinanceiras:
-      many(movimentacaoFinanceira),
-  })
-);
-
-
-const acessoRelations = relations(
-  acesso,
+const movimentacaoFinanceiraRelations = relations(
+  movimentacaoFinanceira,
   ({ one }) => ({
     aluno: one(aluno, {
-      fields: [acesso.alunoId],
+      fields: [movimentacaoFinanceira.alunoId],
       references: [aluno.id],
     }),
-  })
+
+    assinatura: one(assinatura, {
+      fields: [movimentacaoFinanceira.assinaturaId],
+      references: [assinatura.id],
+    }),
+
+    manutencao: one(manutencaoEquipamento, {
+      fields: [movimentacaoFinanceira.manutencaoId],
+      references: [manutencaoEquipamento.id],
+    }),
+
+    conta: one(conta, {
+      fields: [movimentacaoFinanceira.contaId],
+      references: [conta.id],
+    }),
+  }),
 );
 
-
-const equipamentoRelations = relations(
-  equipamento,
-  ({ many }) => ({
-    manutencoes: many(
-      manutencaoEquipamento
-    ),
-  })
-);
-
-
-const manutencaoEquipamentoRelations =
-  relations(
-    manutencaoEquipamento,
-    ({ one, many }) => ({
-      equipamento: one(equipamento, {
-        fields: [
-          manutencaoEquipamento.equipamentoId,
-        ],
-        references: [equipamento.id],
-      }),
-
-      movimentacoesFinanceiras:
-        many(movimentacaoFinanceira),
-    })
-  );
-
-
-const contaRelations = relations(
-  conta,
-  ({ many }) => ({
-    movimentacoesFinanceiras:
-      many(movimentacaoFinanceira),
-  })
-);
-
-
-const movimentacaoFinanceiraRelations =
-  relations(
-    movimentacaoFinanceira,
-    ({ one }) => ({
-      aluno: one(aluno, {
-        fields: [
-          movimentacaoFinanceira.alunoId,
-        ],
-        references: [aluno.id],
-      }),
-
-      assinatura: one(assinatura, {
-        fields: [
-          movimentacaoFinanceira.assinaturaId,
-        ],
-        references: [assinatura.id],
-      }),
-
-      manutencao: one(
-        manutencaoEquipamento,
-        {
-          fields: [
-            movimentacaoFinanceira.manutencaoId,
-          ],
-          references: [
-            manutencaoEquipamento.id,
-          ],
-        }
-      ),
-
-      conta: one(conta, {
-        fields: [
-          movimentacaoFinanceira.contaId,
-        ],
-        references: [conta.id],
-      }),
-    })
-  );
-
-
-const controlePontoRelations =
-  relations(
-    controlePonto,
-    ({ one }) => ({
-      funcionario: one(funcionario, {
-        fields: [
-          controlePonto.funcionarioId,
-        ],
-        references: [funcionario.id],
-      }),
-    })
-  );
-
+const controlePontoRelations = relations(controlePonto, ({ one }) => ({
+  funcionario: one(funcionario, {
+    fields: [controlePonto.funcionarioId],
+    references: [funcionario.id],
+  }),
+}));
 
 /**
  * ============================================================

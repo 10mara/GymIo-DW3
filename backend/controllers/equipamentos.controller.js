@@ -1,7 +1,15 @@
-const { eq, isNull, asc } = require("drizzle-orm");
+
+const { eq, isNull, asc, and } = require("drizzle-orm");
 
 const { db } = require("../db");
 const { equipamento } = require("../db/schema");
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function uuidValido(id) {
+  return typeof id === "string" && UUID_REGEX.test(id);
+}
 
 function mapEquipamentoBancoParaFront(item) {
   return {
@@ -21,23 +29,72 @@ function mapEquipamentoBancoParaFront(item) {
   };
 }
 
+function normalizarData(valor) {
+  if (valor === undefined || valor === null || valor === "") {
+    return null;
+  }
+
+  // O PostgreSQL espera uma data no formato YYYY-MM-DD.
+  if (
+    typeof valor !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(valor)
+  ) {
+    return undefined;
+  }
+
+  const [ano, mes, dia] = valor.split("-").map(Number);
+  const data = new Date(Date.UTC(ano, mes - 1, dia));
+
+  if (
+    data.getUTCFullYear() !== ano ||
+    data.getUTCMonth() !== mes - 1 ||
+    data.getUTCDate() !== dia
+  ) {
+    return undefined;
+  }
+
+  return valor;
+}
+
+function mapDadosDoFront(dados) {
+  const dataAquisicao = normalizarData(dados.dataCompra);
+  const garantia = normalizarData(dados.garantia);
+
+  if (dataAquisicao === undefined || garantia === undefined) {
+    return { erro: "As datas devem ser válidas no formato AAAA-MM-DD" };
+  }
+
+  if (typeof dados.nome !== "string" || !dados.nome.trim()) {
+    return { erro: "Nome do equipamento é obrigatório" };
+  }
+
+  return {
+    valores: {
+      nomeEquipamento: dados.nome.trim(),
+      codigo: dados.codigo || null,
+      categoria: dados.categoria || null,
+      fabricante: dados.fabricante || null,
+      modelo: dados.modelo || null,
+      dataAquisicao,
+      garantia,
+      statusConservacao: dados.status || null,
+      localizacao: dados.localizacao || null,
+      observacoes: dados.observacoes || null,
+    },
+  };
+}
+
 async function listarEquipamentos(req, res) {
   try {
-    const data = await db
+    const dados = await db
       .select()
       .from(equipamento)
       .where(isNull(equipamento.deletedAt))
       .orderBy(asc(equipamento.nomeEquipamento));
 
-    return res.json(
-      data.map(mapEquipamentoBancoParaFront)
-    );
+    return res.json(dados.map(mapEquipamentoBancoParaFront));
   } catch (erro) {
-    console.error(
-      "Erro ao listar equipamentos:",
-      erro
-    );
-
+    console.error("Erro ao listar equipamentos:", erro);
     return res.status(500).json({
       erro: "Erro ao listar equipamentos",
     });
@@ -46,39 +103,34 @@ async function listarEquipamentos(req, res) {
 
 async function buscarEquipamentoPorId(req, res) {
   try {
-    const id = Number(req.params.id);
+    const { id } = req.params;
 
-    if (Number.isNaN(id)) {
+    if (!uuidValido(id)) {
       return res.status(400).json({
         erro: "ID do equipamento inválido",
       });
     }
 
-    const resultado = await db
+    const [item] = await db
       .select()
       .from(equipamento)
       .where(
-        eq(equipamento.id, id)
-      );
+        and(
+          eq(equipamento.id, id),
+          isNull(equipamento.deletedAt)
+        )
+      )
+      .limit(1);
 
-    if (
-      resultado.length === 0 ||
-      resultado[0].deletedAt !== null
-    ) {
+    if (!item) {
       return res.status(404).json({
         erro: "Equipamento não encontrado",
       });
     }
 
-    return res.json(
-      mapEquipamentoBancoParaFront(resultado[0])
-    );
+    return res.json(mapEquipamentoBancoParaFront(item));
   } catch (erro) {
-    console.error(
-      "Erro ao buscar equipamento:",
-      erro
-    );
-
+    console.error("Erro ao buscar equipamento:", erro);
     return res.status(500).json({
       erro: "Erro ao buscar equipamento",
     });
@@ -87,50 +139,20 @@ async function buscarEquipamentoPorId(req, res) {
 
 async function criarEquipamento(req, res) {
   try {
-    const {
-      nome,
-      codigo,
-      categoria,
-      fabricante,
-      modelo,
-      dataCompra,
-      garantia,
-      status,
-      localizacao,
-      observacoes,
-    } = req.body;
+    const mapeamento = mapDadosDoFront(req.body || {});
 
-    if (!nome || !nome.trim()) {
-      return res.status(400).json({
-        erro: "Nome do equipamento é obrigatório",
-      });
+    if (mapeamento.erro) {
+      return res.status(400).json({ erro: mapeamento.erro });
     }
 
-    const resultado = await db
+    const [item] = await db
       .insert(equipamento)
-      .values({
-        nomeEquipamento: nome.trim(),
-        codigo: codigo || null,
-        categoria: categoria || null,
-        fabricante: fabricante || null,
-        modelo: modelo || null,
-        dataAquisicao: dataCompra || null,
-        garantia: garantia || null,
-        statusConservacao: status || null,
-        localizacao: localizacao || null,
-        observacoes: observacoes || null,
-      })
+      .values(mapeamento.valores)
       .returning();
 
-    return res.status(201).json(
-      mapEquipamentoBancoParaFront(resultado[0])
-    );
+    return res.status(201).json(mapEquipamentoBancoParaFront(item));
   } catch (erro) {
-    console.error(
-      "Erro ao criar equipamento:",
-      erro
-    );
-
+    console.error("Erro ao criar equipamento:", erro);
     return res.status(500).json({
       erro: "Erro ao criar equipamento",
     });
@@ -139,67 +161,40 @@ async function criarEquipamento(req, res) {
 
 async function atualizarEquipamento(req, res) {
   try {
-    const id = Number(req.params.id);
+    const { id } = req.params;
 
-    if (Number.isNaN(id)) {
+    if (!uuidValido(id)) {
       return res.status(400).json({
         erro: "ID do equipamento inválido",
       });
     }
 
-    const {
-      nome,
-      codigo,
-      categoria,
-      fabricante,
-      modelo,
-      dataCompra,
-      garantia,
-      status,
-      localizacao,
-      observacoes,
-    } = req.body;
+    const mapeamento = mapDadosDoFront(req.body || {});
 
-    if (!nome || !nome.trim()) {
-      return res.status(400).json({
-        erro: "Nome do equipamento é obrigatório",
-      });
+    if (mapeamento.erro) {
+      return res.status(400).json({ erro: mapeamento.erro });
     }
 
-    const resultado = await db
+    const [item] = await db
       .update(equipamento)
-      .set({
-        nomeEquipamento: nome.trim(),
-        codigo: codigo || null,
-        categoria: categoria || null,
-        fabricante: fabricante || null,
-        modelo: modelo || null,
-        dataAquisicao: dataCompra || null,
-        garantia: garantia || null,
-        statusConservacao: status || null,
-        localizacao: localizacao || null,
-        observacoes: observacoes || null,
-      })
+      .set(mapeamento.valores)
       .where(
-        eq(equipamento.id, id)
+        and(
+          eq(equipamento.id, id),
+          isNull(equipamento.deletedAt)
+        )
       )
       .returning();
 
-    if (resultado.length === 0) {
+    if (!item) {
       return res.status(404).json({
         erro: "Equipamento não encontrado",
       });
     }
 
-    return res.json(
-      mapEquipamentoBancoParaFront(resultado[0])
-    );
+    return res.json(mapEquipamentoBancoParaFront(item));
   } catch (erro) {
-    console.error(
-      "Erro ao atualizar equipamento:",
-      erro
-    );
-
+    console.error("Erro ao atualizar equipamento:", erro);
     return res.status(500).json({
       erro: "Erro ao atualizar equipamento",
     });
@@ -208,27 +203,26 @@ async function atualizarEquipamento(req, res) {
 
 async function excluirEquipamento(req, res) {
   try {
-    const id = Number(req.params.id);
+    const { id } = req.params;
 
-    if (Number.isNaN(id)) {
+    if (!uuidValido(id)) {
       return res.status(400).json({
         erro: "ID do equipamento inválido",
       });
     }
 
-    const resultado = await db
+    const [item] = await db
       .update(equipamento)
-      .set({
-        deletedAt: new Date(),
-      })
+      .set({ deletedAt: new Date() })
       .where(
-        eq(equipamento.id, id)
+        and(
+          eq(equipamento.id, id),
+          isNull(equipamento.deletedAt)
+        )
       )
-      .returning({
-        id: equipamento.id,
-      });
+      .returning({ id: equipamento.id });
 
-    if (resultado.length === 0) {
+    if (!item) {
       return res.status(404).json({
         erro: "Equipamento não encontrado",
       });
@@ -238,11 +232,7 @@ async function excluirEquipamento(req, res) {
       mensagem: "Equipamento excluído com sucesso",
     });
   } catch (erro) {
-    console.error(
-      "Erro ao excluir equipamento:",
-      erro
-    );
-
+    console.error("Erro ao excluir equipamento:", erro);
     return res.status(500).json({
       erro: "Erro ao excluir equipamento",
     });
