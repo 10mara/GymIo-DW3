@@ -1,4 +1,4 @@
-const { pool } = require("../config/database");
+const { pool } = require("../db");
 
 function gerarIniciais(nome) {
   if (!nome) return "NA";

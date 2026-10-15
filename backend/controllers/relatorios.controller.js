@@ -1,7 +1,19 @@
-const supabase = require("../config/supabase");
+const { pool } = require("../db");
+
+// ============================================================
+// FUNÇÕES AUXILIARES
+// ============================================================
 
 function formatarData(data) {
   if (!data) return "-";
+
+  const texto = String(data).slice(0, 10);
+  const partes = texto.split("-");
+
+  if (partes.length === 3 && partes.every(Boolean)) {
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+  }
+
   return new Date(data).toLocaleDateString("pt-BR");
 }
 
@@ -14,91 +26,166 @@ function formatarMoeda(valor) {
 
 function periodoTexto(inicio, fim) {
   if (!inicio && !fim) return "Todos os registros";
+
   return `${formatarData(inicio)} até ${formatarData(fim)}`;
 }
 
-function filtrarPeriodo(query, campo, inicio, fim, isTimestamp = false) {
-  if (inicio) query = query.gte(campo, isTimestamp ? `${inicio}T00:00:00` : inicio);
-  if (fim) query = query.lte(campo, isTimestamp ? `${fim}T23:59:59` : fim);
-  return query;
+function validarPeriodo(inicio, fim) {
+  const formatoData = /^\d{4}-\d{2}-\d{2}$/;
+
+  if (inicio && !formatoData.test(inicio)) {
+    throw new Error("Parâmetro 'inicio' inválido. Use YYYY-MM-DD.");
+  }
+
+  if (fim && !formatoData.test(fim)) {
+    throw new Error("Parâmetro 'fim' inválido. Use YYYY-MM-DD.");
+  }
+
+  if (inicio && fim && inicio > fim) {
+    throw new Error(
+      "A data inicial não pode ser posterior à data final."
+    );
+  }
 }
 
+// ============================================================
+// RELATÓRIO DE ALUNOS
+// ============================================================
+
 async function gerarRelatorioAlunos(inicio, fim) {
-  let query = supabase
-    .from("aluno")
-    .select(`
-      id,
-      status,
-      data_matricula,
-      pessoa:pessoa_id (
-        nome,
-        cpf,
-        telefone,
-        email
+  const { rows } = await pool.query(
+    `
+    SELECT
+      a.id,
+      a.status,
+      a.data_matricula,
+      p.nome,
+      p.cpf,
+      p.telefone,
+      p.email
+    FROM public.aluno a
+    INNER JOIN public.pessoa p
+      ON p.id = a.pessoa_id
+    WHERE a.deleted_at IS NULL
+      AND p.deleted_at IS NULL
+      AND ($1::date IS NULL OR a.data_matricula >= $1::date)
+      AND (
+        $2::date IS NULL
+        OR a.data_matricula < $2::date + INTERVAL '1 day'
       )
-    `)
-    .is("deleted_at", null);
-
-  query = filtrarPeriodo(query, "data_matricula", inicio, fim);
-
-  const { data, error } = await query;
-  if (error) throw error;
+    ORDER BY p.nome ASC
+    `,
+    [inicio || null, fim || null]
+  );
 
   return {
     titulo: "Relatório de Alunos",
     periodo: periodoTexto(inicio, fim),
     resumo: [
-      { label: "Total de alunos", valor: data.length },
+      {
+        label: "Total de alunos",
+        valor: rows.length,
+      },
       {
         label: "Alunos ativos",
-        valor: data.filter((item) => item.status?.toLowerCase() === "ativo").length,
+        valor: rows.filter(
+          (item) => item.status?.toLowerCase() === "ativo"
+        ).length,
       },
       {
         label: "Alunos inativos",
-        valor: data.filter((item) => item.status?.toLowerCase() === "inativo").length,
+        valor: rows.filter(
+          (item) => item.status?.toLowerCase() === "inativo"
+        ).length,
       },
     ],
-    colunas: ["Nome", "CPF", "Telefone", "E-mail", "Status", "Matrícula"],
-    tabela: data.map((item) => [
-      item.pessoa?.nome || "-",
-      item.pessoa?.cpf || "-",
-      item.pessoa?.telefone || "-",
-      item.pessoa?.email || "-",
+    colunas: [
+      "Nome",
+      "CPF",
+      "Telefone",
+      "E-mail",
+      "Status",
+      "Matrícula",
+    ],
+    tabela: rows.map((item) => [
+      item.nome || "-",
+      item.cpf || "-",
+      item.telefone || "-",
+      item.email || "-",
       item.status || "-",
       formatarData(item.data_matricula),
     ]),
   };
 }
 
+// ============================================================
+// RELATÓRIO DE RECEITA
+// ============================================================
+
 async function gerarRelatorioReceita(inicio, fim) {
-  let query = supabase
-    .from("movimentacao_financeira")
-    .select("tipo_movimentacao, valor, data_movimentacao, descricao")
-    .is("deleted_at", null);
+  const { rows } = await pool.query(
+    `
+    SELECT
+      tipo_movimentacao,
+      valor,
+      data_movimentacao,
+      descricao
+    FROM public.movimentacao_financeira
+    WHERE deleted_at IS NULL
+      AND (
+        $1::date IS NULL
+        OR data_movimentacao >= $1::date
+      )
+      AND (
+        $2::date IS NULL
+        OR data_movimentacao < $2::date + INTERVAL '1 day'
+      )
+    ORDER BY data_movimentacao DESC
+    `,
+    [inicio || null, fim || null]
+  );
 
-  query = filtrarPeriodo(query, "data_movimentacao", inicio, fim, true);
+  const entradas = rows
+    .filter((item) =>
+      ["entrada", "receber"].includes(
+        item.tipo_movimentacao?.toLowerCase()
+      )
+    )
+    .reduce(
+      (total, item) => total + Number(item.valor || 0),
+      0
+    );
 
-  const { data, error } = await query;
-  if (error) throw error;
-
-  const entradas = data
-    .filter((item) => item.tipo_movimentacao?.toLowerCase() === "entrada")
-    .reduce((total, item) => total + Number(item.valor || 0), 0);
-
-  const saidas = data
-    .filter((item) => item.tipo_movimentacao?.toLowerCase() === "saida")
-    .reduce((total, item) => total + Number(item.valor || 0), 0);
+  const saidas = rows
+    .filter((item) =>
+      ["saida", "saída", "pagar"].includes(
+        item.tipo_movimentacao?.toLowerCase()
+      )
+    )
+    .reduce(
+      (total, item) => total + Number(item.valor || 0),
+      0
+    );
 
   return {
     titulo: "Relatório de Receita",
     periodo: periodoTexto(inicio, fim),
     resumo: [
-      { label: "Entradas", valor: formatarMoeda(entradas) },
-      { label: "Saídas", valor: formatarMoeda(saidas) },
-      { label: "Saldo", valor: formatarMoeda(entradas - saidas) },
+      {
+        label: "Entradas",
+        valor: formatarMoeda(entradas),
+      },
+      {
+        label: "Saídas",
+        valor: formatarMoeda(saidas),
+      },
+      {
+        label: "Saldo",
+        valor: formatarMoeda(entradas - saidas),
+      },
     ],
     colunas: ["Tipo", "Valor", "Data", "Descrição"],
-    tabela: data.map((item) => [
+    tabela: rows.map((item) => [
       item.tipo_movimentacao || "-",
       formatarMoeda(item.valor),
       formatarData(item.data_movimentacao),
@@ -107,103 +194,168 @@ async function gerarRelatorioReceita(inicio, fim) {
   };
 }
 
+// ============================================================
+// RELATÓRIO DE INADIMPLÊNCIA
+// ============================================================
+
 async function gerarRelatorioInadimplencia(inicio, fim) {
-  let query = supabase
-    .from("assinatura")
-    .select(`
-      id,
-      status_assinatura,
-      data_inicio,
-      data_fim,
-      aluno:aluno_id (
-        pessoa:pessoa_id (
-          nome,
-          cpf,
-          telefone,
-          email
-        )
-      ),
-      plano:plano_id (
-        nome_plano,
-        valor
+  const { rows } = await pool.query(
+    `
+    SELECT
+      ass.id,
+      ass.status_assinatura,
+      ass.data_inicio,
+      ass.data_fim,
+      p.nome AS aluno_nome,
+      p.cpf AS aluno_cpf,
+      p.telefone AS aluno_telefone,
+      p.email AS aluno_email,
+      pl.nome_plano,
+      pl.valor AS plano_valor
+    FROM public.assinatura ass
+    INNER JOIN public.aluno a
+      ON a.id = ass.aluno_id
+      AND a.deleted_at IS NULL
+    INNER JOIN public.pessoa p
+      ON p.id = a.pessoa_id
+      AND p.deleted_at IS NULL
+    LEFT JOIN public.plano pl
+      ON pl.id = ass.plano_id
+      AND pl.deleted_at IS NULL
+    WHERE ass.deleted_at IS NULL
+      AND LOWER(ass.status_assinatura) = 'inadimplente'
+      AND (
+        $1::date IS NULL
+        OR ass.data_inicio >= $1::date
       )
-    `)
-    .ilike("status_assinatura", "Inadimplente")
-    .is("deleted_at", null);
+      AND (
+        $2::date IS NULL
+        OR ass.data_inicio < $2::date + INTERVAL '1 day'
+      )
+    ORDER BY p.nome ASC
+    `,
+    [inicio || null, fim || null]
+  );
 
-  query = filtrarPeriodo(query, "data_inicio", inicio, fim);
-
-  const { data, error } = await query;
-  if (error) throw error;
-
-  const total = data.reduce((soma, item) => soma + Number(item.plano?.valor || 0), 0);
+  const total = rows.reduce(
+    (soma, item) => soma + Number(item.plano_valor || 0),
+    0
+  );
 
   return {
     titulo: "Relatório de Inadimplência",
     periodo: periodoTexto(inicio, fim),
     resumo: [
-      { label: "Total inadimplente", valor: data.length },
-      { label: "Valor em atraso", valor: formatarMoeda(total) },
+      {
+        label: "Total inadimplente",
+        valor: rows.length,
+      },
+      {
+        label: "Valor em atraso",
+        valor: formatarMoeda(total),
+      },
     ],
-    colunas: ["Aluno", "CPF", "Telefone", "E-mail", "Plano", "Valor", "Status"],
-    tabela: data.map((item) => [
-      item.aluno?.pessoa?.nome || "-",
-      item.aluno?.pessoa?.cpf || "-",
-      item.aluno?.pessoa?.telefone || "-",
-      item.aluno?.pessoa?.email || "-",
-      item.plano?.nome_plano || "-",
-      formatarMoeda(item.plano?.valor),
+    colunas: [
+      "Aluno",
+      "CPF",
+      "Telefone",
+      "E-mail",
+      "Plano",
+      "Valor",
+      "Status",
+    ],
+    tabela: rows.map((item) => [
+      item.aluno_nome || "-",
+      item.aluno_cpf || "-",
+      item.aluno_telefone || "-",
+      item.aluno_email || "-",
+      item.nome_plano || "-",
+      formatarMoeda(item.plano_valor),
       item.status_assinatura || "-",
     ]),
   };
 }
 
+// ============================================================
+// RELATÓRIO DE FREQUÊNCIA
+// ============================================================
+
 async function gerarRelatorioFrequencia(inicio, fim) {
-  let query = supabase
-    .from("acesso")
-    .select(`
-      tipo_acesso,
-      data_hora_acesso,
-      aluno:aluno_id (
-        pessoa:pessoa_id (
-          nome
-        )
+  const { rows } = await pool.query(
+    `
+    SELECT
+      ac.tipo_acesso,
+      ac.data_hora_acesso,
+      p.nome AS aluno_nome
+    FROM public.acesso ac
+    LEFT JOIN public.aluno a
+      ON a.id = ac.aluno_id
+      AND a.deleted_at IS NULL
+    LEFT JOIN public.pessoa p
+      ON p.id = a.pessoa_id
+      AND p.deleted_at IS NULL
+    WHERE ac.deleted_at IS NULL
+      AND (
+        $1::date IS NULL
+        OR ac.data_hora_acesso >= $1::date
       )
-    `)
-    .is("deleted_at", null);
-
-  query = filtrarPeriodo(query, "data_hora_acesso", inicio, fim, true);
-
-  const { data, error } = await query;
-  if (error) throw error;
+      AND (
+        $2::date IS NULL
+        OR ac.data_hora_acesso < $2::date + INTERVAL '1 day'
+      )
+    ORDER BY ac.data_hora_acesso DESC
+    `,
+    [inicio || null, fim || null]
+  );
 
   return {
     titulo: "Relatório de Frequência",
     periodo: periodoTexto(inicio, fim),
-    resumo: [{ label: "Total de acessos", valor: data.length }],
+    resumo: [
+      {
+        label: "Total de acessos",
+        valor: rows.length,
+      },
+    ],
     colunas: ["Aluno", "Tipo", "Data/Hora"],
-    tabela: data.map((item) => [
-      item.aluno?.pessoa?.nome || "-",
+    tabela: rows.map((item) => [
+      item.aluno_nome || "-",
       item.tipo_acesso || "-",
       formatarData(item.data_hora_acesso),
     ]),
   };
 }
 
-async function gerarRelatorioEquipamentos() {
-  const { data, error } = await supabase
-    .from("equipamento")
-    .select("nome_equipamento, data_aquisicao, status_conservacao")
-    .is("deleted_at", null);
+// ============================================================
+// RELATÓRIO DE EQUIPAMENTOS
+// ============================================================
 
-  if (error) throw error;
+async function gerarRelatorioEquipamentos() {
+  const { rows } = await pool.query(`
+    SELECT
+      nome_equipamento,
+      data_aquisicao,
+      status_conservacao
+    FROM public.equipamento
+    WHERE deleted_at IS NULL
+    ORDER BY nome_equipamento ASC
+  `);
 
   return {
     titulo: "Relatório de Equipamentos",
     periodo: "Todos os registros",
-    resumo: [{ label: "Total de equipamentos", valor: data.length }],
-    colunas: ["Equipamento", "Data de Aquisição", "Status"],
-    tabela: data.map((item) => [
+    resumo: [
+      {
+        label: "Total de equipamentos",
+        valor: rows.length,
+      },
+    ],
+    colunas: [
+      "Equipamento",
+      "Data de Aquisição",
+      "Status",
+    ],
+    tabela: rows.map((item) => [
       item.nome_equipamento || "-",
       formatarData(item.data_aquisicao),
       item.status_conservacao || "-",
@@ -211,35 +363,52 @@ async function gerarRelatorioEquipamentos() {
   };
 }
 
+// ============================================================
+// RELATÓRIO GERAL
+// ============================================================
+
 async function gerarRelatorioGeral(inicio, fim) {
-  const alunos = await gerarRelatorioAlunos(inicio, fim);
-  const receita = await gerarRelatorioReceita(inicio, fim);
-  const frequencia = await gerarRelatorioFrequencia(inicio, fim);
-  const equipamentos = await gerarRelatorioEquipamentos();
+  const [
+    alunos,
+    receita,
+    frequencia,
+    equipamentos,
+  ] = await Promise.all([
+    gerarRelatorioAlunos(inicio, fim),
+    gerarRelatorioReceita(inicio, fim),
+    gerarRelatorioFrequencia(inicio, fim),
+    gerarRelatorioEquipamentos(),
+  ]);
+
+  const indicadores = [
+    ...alunos.resumo,
+    ...receita.resumo,
+    ...frequencia.resumo,
+    ...equipamentos.resumo,
+  ];
 
   return {
     titulo: "Relatório Geral",
     periodo: periodoTexto(inicio, fim),
-    resumo: [
-      ...alunos.resumo,
-      ...receita.resumo,
-      ...frequencia.resumo,
-      ...equipamentos.resumo,
-    ],
+    resumo: indicadores,
     colunas: ["Indicador", "Valor"],
-    tabela: [
-      ...alunos.resumo.map((item) => [item.label, item.valor]),
-      ...receita.resumo.map((item) => [item.label, item.valor]),
-      ...frequencia.resumo.map((item) => [item.label, item.valor]),
-      ...equipamentos.resumo.map((item) => [item.label, item.valor]),
-    ],
+    tabela: indicadores.map((item) => [
+      item.label,
+      item.valor,
+    ]),
   };
 }
+
+// ============================================================
+// ROTA PRINCIPAL DOS RELATÓRIOS
+// ============================================================
 
 async function gerarRelatorio(req, res) {
   try {
     const { tipo } = req.params;
     const { inicio, fim } = req.query;
+
+    validarPeriodo(inicio, fim);
 
     let relatorio;
 
@@ -265,9 +434,14 @@ async function gerarRelatorio(req, res) {
   } catch (erro) {
     console.error("Erro ao gerar relatório:", erro);
 
-    return res.status(500).json({
-      erro: "Erro ao gerar relatório",
-      detalhe: erro.message,
+    const erroDeValidacao =
+      erro.message?.includes("Parâmetro '") ||
+      erro.message?.includes("data inicial");
+
+    return res.status(erroDeValidacao ? 400 : 500).json({
+      erro: erroDeValidacao
+        ? erro.message
+        : "Erro ao gerar relatório",
     });
   }
 }
