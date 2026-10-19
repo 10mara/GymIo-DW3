@@ -1,34 +1,13 @@
-const {
-  checkDatabaseConnection,
-  closeDatabaseConnection,
-} = require("../db");
+const { checkDatabaseConnection, disconnectDatabase } = require("../src/config/prisma");
 
-async function main() {
+(async () => {
   try {
-    const result = await checkDatabaseConnection();
-
-    console.log("");
-    console.log("========================================");
-    console.log("✅ PostgreSQL conectado com sucesso!");
-    console.log("========================================");
-    console.log("");
-    console.log("Servidor respondeu em:");
-    console.log(result.now);
-    console.log("");
-  } catch (error) {
-    console.error("");
-    console.error("========================================");
-    console.error("❌ ERRO AO CONECTAR NO POSTGRESQL");
-    console.error("========================================");
-    console.error("");
-    console.error(error.message);
-    console.error("");
-    console.error("Código:", error.code || "N/A");
-    console.error("");
+    const { now } = await checkDatabaseConnection();
+    console.log("✅ PostgreSQL conectado com sucesso! Servidor respondeu em:", now);
+  } catch (err) {
+    console.error("❌ Erro ao conectar no PostgreSQL:", err.message, "| código:", err.code || "N/A");
     process.exitCode = 1;
   } finally {
-    await closeDatabaseConnection();
+    await disconnectDatabase();
   }
-}
-
-main();
+})();

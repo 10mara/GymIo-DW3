@@ -1,0 +1,196 @@
+// ============================================================
+// GymIO - schema Prisma
+// Espelha o banco ATUAL do Supabase (derivado do schema Drizzle do repositório).
+// ANTES de qualquer migration: rode `npx prisma db pull` em um arquivo à parte
+// e compare com este. NÃO rode `prisma migrate dev` no banco compartilhado.
+// Arquivo compartilhado: alterações combinadas com a equipe antes do merge.
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Cargo {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nomeCargo    String        @map("nome_cargo")
+  salarioBase  Decimal?      @map("salario_base") @db.Decimal(10, 2)
+  deletedAt    DateTime?     @map("deleted_at") @db.Timestamptz(6)
+  funcionarios Funcionario[]
+
+  @@map("cargo")
+}
+
+model Pessoa {
+  id                   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome                 String
+  cpf                  String        @unique(map: "pessoa_cpf_key") @db.VarChar(14)
+  dataNascimento       DateTime?     @map("data_nascimento") @db.Date
+  telefone             String?
+  email                String?       @unique(map: "pessoa_email_key")
+  endereco             String?
+  createdAt            DateTime?     @default(now()) @map("created_at") @db.Timestamptz(6)
+  deletedAt            DateTime?     @map("deleted_at") @db.Timestamptz(6)
+  password             String?
+  passwordResetToken   String?       @map("password_reset_token")
+  passwordResetExpires DateTime?     @map("passeword_reset_expires") @db.Timestamp(6)
+  authId               String?       @map("auth_id") @db.Uuid
+  alunos               Aluno[]
+  funcionarios         Funcionario[]
+
+  @@map("pessoa")
+}
+
+model Aluno {
+  id            String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pessoaId      String?                  @map("pessoa_id") @db.Uuid
+  status        String?                  @default("ativo")
+  dataMatricula DateTime?                @default(dbgenerated("CURRENT_DATE")) @map("data_matricula") @db.Date
+  deletedAt     DateTime?                @map("deleted_at") @db.Timestamptz(6)
+  pessoa        Pessoa?                  @relation(fields: [pessoaId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "aluno_pessoa_id_fkey")
+  assinaturas   Assinatura[]
+  acessos       Acesso[]
+  movimentacoes MovimentacaoFinanceira[]
+
+  @@map("aluno")
+}
+
+model Plano {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nomePlano    String       @map("nome_plano")
+  descricao    String?
+  valor        Decimal      @db.Decimal(10, 2)
+  duracaoMeses Int?         @map("duracao_meses")
+  deletedAt    DateTime?    @map("deleted_at") @db.Timestamptz(6)
+  assinaturas  Assinatura[]
+
+  @@map("plano")
+}
+
+model Assinatura {
+  id               String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  alunoId          String?                  @map("aluno_id") @db.Uuid
+  planoId          String?                  @map("plano_id") @db.Uuid
+  dataInicio       DateTime?                @default(dbgenerated("CURRENT_DATE")) @map("data_inicio") @db.Date
+  dataFim          DateTime?                @map("data_fim") @db.Date
+  statusAssinatura String?                  @map("status_assinatura")
+  deletedAt        DateTime?                @map("deleted_at") @db.Timestamptz(6)
+  dataAssinatura   DateTime?                @map("data_assinatura") @db.Date
+  aluno            Aluno?                   @relation(fields: [alunoId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "assinatura_aluno_id_fkey")
+  plano            Plano?                   @relation(fields: [planoId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "assinatura_plano_id_fkey")
+  movimentacoes    MovimentacaoFinanceira[]
+
+  @@map("assinatura")
+}
+
+model Funcionario {
+  id           String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pessoaId     String?                 @map("pessoa_id") @db.Uuid
+  cargoId      String?                 @map("cargo_id") @db.Uuid
+  dataAdmissao DateTime?               @default(dbgenerated("CURRENT_DATE")) @map("data_admissao") @db.Date
+  ctps         String?                 @db.VarChar(20)
+  deletedAt    DateTime?               @map("deleted_at") @db.Timestamptz(6)
+  status       String?
+  cargo        Cargo?                  @relation(fields: [cargoId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "funcionario_cargo_id_fkey")
+  pessoa       Pessoa?                 @relation(fields: [pessoaId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "funcionario_pessoa_id_fkey")
+  pontos       ControlePonto[]
+  manutencoes  ManutencaoEquipamento[]
+
+  @@map("funcionario")
+}
+
+model ControlePonto {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  funcionarioId String?      @map("funcionario_id") @db.Uuid
+  entrada       DateTime?    @default(now()) @db.Timestamptz(6)
+  saida         DateTime?    @db.Timestamptz(6)
+  deletedAt     DateTime?    @map("deleted_at") @db.Timestamptz(6)
+  funcionario   Funcionario? @relation(fields: [funcionarioId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "controle_ponto_funcionario_id_fkey")
+
+  @@map("controle_ponto")
+}
+
+model Equipamento {
+  id                String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nomeEquipamento   String                  @map("nome_equipamento")
+  dataAquisicao     DateTime?               @map("data_aquisicao") @db.Date
+  statusConservacao String?                 @map("status_conservacao")
+  deletedAt         DateTime?               @map("deleted_at") @db.Timestamptz(6)
+  codigo            String?
+  categoria         String?
+  fabricante        String?
+  modelo            String?
+  garantia          DateTime?               @db.Date
+  localizacao       String?
+  observacoes       String?
+  manutencoes       ManutencaoEquipamento[]
+
+  @@map("equipamento")
+}
+
+model ManutencaoEquipamento {
+  id               String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  equipamentoId    String?                  @map("equipamento_id") @db.Uuid
+  funcionarioId    String?                  @map("funcionario_id") @db.Uuid
+  dataManutencao   DateTime?                @default(dbgenerated("CURRENT_DATE")) @map("data_manutencao") @db.Date
+  descricaoServico String?                  @map("descricao_servico")
+  custo            Decimal?                 @db.Decimal(10, 2)
+  deletedAt        DateTime?                @map("deleted_at") @db.Timestamptz(6)
+  dataFinalizacao  DateTime?                @map("data_finalizacao") @db.Date
+  tipoManutencao   String?                  @map("tipo_manutencao")
+  tecnico          String?
+  equipamento      Equipamento?             @relation(fields: [equipamentoId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "manutencao_equipamento_equipamento_id_fkey")
+  funcionario      Funcionario?             @relation(fields: [funcionarioId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "manutencao_equipamento_funcionario_id_fkey")
+  movimentacoes    MovimentacaoFinanceira[]
+
+  @@map("manutencao_equipamento")
+}
+
+model Conta {
+  id            String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  saldo         Decimal                  @db.Decimal
+  data          DateTime?                @db.Date
+  deleteAt      DateTime?                @map("delete_at") @db.Timestamp(6)
+  movimentacoes MovimentacaoFinanceira[]
+
+  @@map("conta")
+}
+
+model Acesso {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  alunoId        String?   @map("aluno_id") @db.Uuid
+  dataHoraAcesso DateTime? @default(now()) @map("data_hora_acesso") @db.Timestamptz(6)
+  tipoAcesso     String?   @map("tipo_acesso")
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  horaEntrada    DateTime? @map("hora_entrada") @db.Timestamp(6)
+  horaSaida      DateTime? @map("hora_saida") @db.Timestamp(6)
+  aluno          Aluno?    @relation(fields: [alunoId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "acesso_aluno_id_fkey")
+
+  @@map("acesso")
+}
+
+model MovimentacaoFinanceira {
+  id               String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tipoMovimentacao String?                @map("tipo_movimentacao")
+  valor            Decimal                @db.Decimal(10, 2)
+  dataMovimentacao DateTime?              @default(now()) @map("data_movimentacao") @db.Timestamptz(6)
+  descricao        String?
+  assinaturaId     String?                @map("assinatura_id") @db.Uuid
+  manutencaoId     String?                @map("manutencao_id") @db.Uuid
+  deletedAt        DateTime?              @map("deleted_at") @db.Timestamptz(6)
+  contaId          String                 @map("conta_id") @db.Uuid
+  alunoId          String?                @map("aluno_id") @db.Uuid
+  vencimento       DateTime?              @db.Date
+  status           String?                @default("Pendente")
+  categoria        String?
+  aluno            Aluno?                 @relation(fields: [alunoId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "movimentacao_financeira_aluno_id_fkey")
+  assinatura       Assinatura?            @relation(fields: [assinaturaId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "movimentacao_financeira_assinatura_id_fkey")
+  conta            Conta                  @relation(fields: [contaId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "movimentacao_financeira_conta_id_fkey")
+  manutencao       ManutencaoEquipamento? @relation(fields: [manutencaoId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "movimentacao_financeira_manutencao_id_fkey")
+
+  @@map("movimentacao_financeira")
+}
