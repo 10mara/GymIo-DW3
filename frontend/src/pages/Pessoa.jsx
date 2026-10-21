@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import Sidebar from "../layout/Sidebar";
 import ModalCadastroPessoa from "../components/ModalCadastroPessoa";
 import ModalPerfil from "../components/ModalPerfil";
+import api from "../services/api";
 import "../styles/alunos.css";
 import "../styles/globals.css";
 
@@ -17,7 +18,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
-const ENDPOINT_API = "http://localhost:3002/api/pessoas";
+const ENDPOINT_API = "/pessoas";
 
 const payloadInicial = {
   nome: "",
@@ -75,20 +76,18 @@ export default function Pessoa() {
         respostaPlanos,
         respostaCargos,
       ] = await Promise.all([
-        fetch(ENDPOINT_API),
-        fetch(`${ENDPOINT_API}/total-alunos`),
-        fetch(`${ENDPOINT_API}/indicadores`),
-        fetch(`${ENDPOINT_API}/planos`),
-        fetch(`${ENDPOINT_API}/cargos`),
+        api.get(ENDPOINT_API),
+        api.get(`${ENDPOINT_API}/total-alunos`),
+        api.get(`${ENDPOINT_API}/indicadores`),
+        api.get(`${ENDPOINT_API}/planos`),
+        api.get(`${ENDPOINT_API}/cargos`),
       ]);
 
-      const dadosPessoas = await respostaPessoas.json();
-      const dadosContagem = await respostaContagem.json();
-      const dadosIndicadores = await respostaIndicadores.json();
-      const dadosPlanos = await respostaPlanos.json();
-      const dadosCargos = await respostaCargos.json();
-
-      console.log("INDICADORES:", dadosIndicadores);
+      const dadosPessoas = respostaPessoas.data;
+      const dadosContagem = respostaContagem.data;
+      const dadosIndicadores = respostaIndicadores.data;
+      const dadosPlanos = respostaPlanos.data;
+      const dadosCargos = respostaCargos.data;
 
       setListaPessoas(Array.isArray(dadosPessoas) ? dadosPessoas : []);
       setListaPlanos(Array.isArray(dadosPlanos) ? dadosPlanos : []);
@@ -111,8 +110,8 @@ export default function Pessoa() {
 
   async function atualizarRegistros() {
     try {
-      const resposta = await fetch(ENDPOINT_API);
-      const dados = await resposta.json();
+      const resposta = await api.get(ENDPOINT_API);
+      const dados = resposta.data;
       setListaPessoas(Array.isArray(dados) ? dados : []);
     } catch (erro) {
       console.error("Erro ao recarregar alunos:", erro);
@@ -169,21 +168,7 @@ export default function Pessoa() {
           : null,
       };
 
-      const resposta = await fetch(ENDPOINT_API, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const resultado = await resposta.json();
-
-      if (!resposta.ok) {
-        console.error(resultado);
-        alert(resultado.erro || "Erro ao salvar cadastro");
-        return;
-      }
+      await api.post(ENDPOINT_API, payload);
 
       alert("Cadastro realizado com sucesso!");
       await obterDadosIniciais();
@@ -192,7 +177,11 @@ export default function Pessoa() {
       setIsModalInclusaoAberto(false);
     } catch (erro) {
       console.error(erro);
-      alert("Erro de conexão com o servidor");
+      alert(
+        erro.response?.data?.erro ||
+          erro.response?.data?.message ||
+          "Erro ao salvar cadastro",
+      );
     }
   }
 
@@ -217,56 +206,41 @@ export default function Pessoa() {
     if (!registroSelecionadoEdicao) return;
 
     try {
-      const resposta = await fetch(
+      await api.put(
         `${ENDPOINT_API}/${registroSelecionadoEdicao.id}`,
         {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            nome: registroSelecionadoEdicao.nome,
-            cpf: registroSelecionadoEdicao.cpf,
-            telefone: registroSelecionadoEdicao.telefone,
-            email: registroSelecionadoEdicao.email,
-            dataNascimento: registroSelecionadoEdicao.dataNascimento,
-            endereco: registroSelecionadoEdicao.endereco,
-            senha: registroSelecionadoEdicao.senha,
-            // Propriedades fragmentadas enviadas de forma íntegra para o back-end
-            isAluno: registroSelecionadoEdicao.isAluno,
-            plano_id: registroSelecionadoEdicao.isAluno
-              ? registroSelecionadoEdicao.plano_id
-              : null,
-            status: registroSelecionadoEdicao.isAluno
-              ? registroSelecionadoEdicao.status
-              : "Ativo",
-            dataMatricula: registroSelecionadoEdicao.isAluno
-              ? registroSelecionadoEdicao.dataMatricula
-              : null,
-            isFuncionario: registroSelecionadoEdicao.isFuncionario,
-            cargo_id: registroSelecionadoEdicao.isFuncionario
-              ? registroSelecionadoEdicao.cargo_id
-              : null,
-            dataAdmissao: registroSelecionadoEdicao.isFuncionario
-              ? registroSelecionadoEdicao.dataAdmissao
-              : null,
-            salario: registroSelecionadoEdicao.isFuncionario
-              ? registroSelecionadoEdicao.salario
-              : null,
-            comissao: registroSelecionadoEdicao.isFuncionario
-              ? registroSelecionadoEdicao.comissao
-              : null,
-          }),
+          nome: registroSelecionadoEdicao.nome,
+          cpf: registroSelecionadoEdicao.cpf,
+          telefone: registroSelecionadoEdicao.telefone,
+          email: registroSelecionadoEdicao.email,
+          dataNascimento: registroSelecionadoEdicao.dataNascimento,
+          endereco: registroSelecionadoEdicao.endereco,
+          senha: registroSelecionadoEdicao.senha,
+          isAluno: registroSelecionadoEdicao.isAluno,
+          plano_id: registroSelecionadoEdicao.isAluno
+            ? registroSelecionadoEdicao.plano_id
+            : null,
+          status: registroSelecionadoEdicao.isAluno
+            ? registroSelecionadoEdicao.status
+            : "Ativo",
+          dataMatricula: registroSelecionadoEdicao.isAluno
+            ? registroSelecionadoEdicao.dataMatricula
+            : null,
+          isFuncionario: registroSelecionadoEdicao.isFuncionario,
+          cargo_id: registroSelecionadoEdicao.isFuncionario
+            ? registroSelecionadoEdicao.cargo_id
+            : null,
+          dataAdmissao: registroSelecionadoEdicao.isFuncionario
+            ? registroSelecionadoEdicao.dataAdmissao
+            : null,
+          salario: registroSelecionadoEdicao.isFuncionario
+            ? registroSelecionadoEdicao.salario
+            : null,
+          comissao: registroSelecionadoEdicao.isFuncionario
+            ? registroSelecionadoEdicao.comissao
+            : null,
         },
       );
-
-      const resultado = await resposta.json();
-
-      if (!resposta.ok) {
-        console.error(resultado);
-        alert("Erro ao editar aluno");
-        return;
-      }
 
       alert("Alterações salvas com sucesso!");
 
@@ -275,7 +249,11 @@ export default function Pessoa() {
       setRegistroSelecionadoEdicao(null);
     } catch (erro) {
       console.error("Erro ao editar aluno:", erro);
-      alert("Erro de conexão com o servidor");
+      alert(
+        erro.response?.data?.erro ||
+          erro.response?.data?.message ||
+          "Erro ao editar cadastro",
+      );
     }
   }
 
@@ -288,19 +266,7 @@ export default function Pessoa() {
     if (!registroSelecionadoRemocao) return;
 
     try {
-      const resposta = await fetch(
-        `${ENDPOINT_API}/${registroSelecionadoRemocao.id}`,
-        {
-          method: "DELETE",
-        },
-      );
-
-      if (!resposta.ok) {
-        const erroObtido = await resposta.json();
-        console.error("Erro ao excluir aluno:", erroObtido);
-        alert(erroObtido.erro || "Erro ao excluir aluno");
-        return;
-      }
+      await api.delete(`${ENDPOINT_API}/${registroSelecionadoRemocao.id}`);
 
       setListaPessoas((estadoAnterior) =>
         estadoAnterior.filter(
@@ -311,7 +277,11 @@ export default function Pessoa() {
       setRegistroSelecionadoRemocao(null);
     } catch (erro) {
       console.error("Erro ao excluir aluno:", erro);
-      alert("Erro de conexão com o servidor");
+      alert(
+        erro.response?.data?.erro ||
+          erro.response?.data?.message ||
+          "Erro ao excluir cadastro",
+      );
     }
   }
 

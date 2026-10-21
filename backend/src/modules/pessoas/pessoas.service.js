@@ -25,8 +25,8 @@ const texto = (v) => (typeof v === "string" ? v.trim() : v);
 
 /* ------------------------------ consultas ------------------------------ */
 
-async function listar() {
-  const pessoas = await repository.findAll();
+async function listar(tipo) {
+  const pessoas = await repository.findAll(tipo);
   return pessoas.map(s.toListItem);
 }
 
@@ -70,6 +70,28 @@ async function indicadores() {
   else if (novosMes > 0) crescimento = 100;
 
   return { novosMes, cancelamentos, crescimento: Number(crescimento.toFixed(1)) };
+}
+
+async function resumoDashboard() {
+  const [ano, mes] = todayISO().split("-").map(Number);
+  const inicioAtual = new Date(Date.UTC(ano, mes - 1, 1));
+  const inicioProximo = new Date(Date.UTC(ano, mes, 1));
+  const inicioAnterior = new Date(Date.UTC(ano, mes - 2, 1));
+  const [resumo] = await repository.resumoDashboard(inicioAtual, inicioProximo, inicioAnterior);
+
+  let crescimento = 0;
+  if (resumo.novosMesAnterior > 0) {
+    crescimento = ((resumo.novosMes - resumo.novosMesAnterior) / resumo.novosMesAnterior) * 100;
+  } else if (resumo.novosMes > 0) {
+    crescimento = 100;
+  }
+
+  return {
+    alunosAtivos: resumo.alunosAtivos,
+    novosMes: resumo.novosMes,
+    cancelamentos: resumo.cancelamentos,
+    crescimento: Number(crescimento.toFixed(1)),
+  };
 }
 
 /* ------------------------------ criação ------------------------------ */
@@ -140,6 +162,9 @@ async function atualizar(id, body) {
   if (novaSenha !== undefined) dadosPessoa.password = await hashSenha(novaSenha);
 
   const dataMatricula = parseDateOnly(body.dataMatricula, "dataMatricula");
+  const valorDataAdmissao =
+    body.dataAdmissao !== undefined ? body.dataAdmissao : body.data_admissao;
+  const dataAdmissao = parseDateOnly(valorDataAdmissao, "dataAdmissao");
   const { status, plano_id: planoId } = body;
 
   const pessoa = await repository.transaction(async (tx) => {
@@ -148,23 +173,68 @@ async function atualizar(id, body) {
     const atualizada = await repository.updatePessoa(id, dadosPessoa, tx);
 
     const aluno = await repository.findAlunoAtivo(id, tx);
-    if (!aluno) return atualizada;
+    if (body.isAluno === false && aluno) {
+      await repository.softDeleteAluno(aluno.id, new Date(), tx);
+    } else if (body.isAluno === true && !aluno) {
+      const dataInicio = dataMatricula || parseDateOnly(todayISO());
+      await repository.createAlunoCompleto(
+        id,
+        { status: status || "Ativo", dataMatricula: dataInicio },
+        {
+          planoId: planoId || null,
+          statusAssinatura: status || "Ativo",
+          dataInicio,
+          dataAssinatura: dataInicio,
+        },
+        tx,
+      );
+    } else if (aluno) {
+      const dadosAluno = {};
+      if (status) dadosAluno.status = status;
+      if (dataMatricula) dadosAluno.dataMatricula = dataMatricula;
+      if (Object.keys(dadosAluno).length) {
+        await repository.updateAluno(aluno.id, dadosAluno, tx);
+      }
 
-    const dadosAluno = {};
-    if (status) dadosAluno.status = status;
-    if (dataMatricula) dadosAluno.dataMatricula = dataMatricula;
-    if (Object.keys(dadosAluno).length) await repository.updateAluno(aluno.id, dadosAluno, tx);
+      const assinatura = await repository.findAssinaturaMaisRecente(aluno.id, tx);
+      if (assinatura) {
+        const dadosAssinatura = {};
+        if (status) dadosAssinatura.statusAssinatura = status;
+        if (planoId !== undefined) dadosAssinatura.planoId = planoId || null;
+        if (status === "Cancelado") {
+          dadosAssinatura.dataFim = assinatura.dataFim || parseDateOnly(todayISO());
+        }
+        if (status === "Ativo") dadosAssinatura.dataFim = null;
 
-    const assinatura = await repository.findAssinaturaMaisRecente(aluno.id, tx);
-    if (!assinatura) return atualizada;
+        if (Object.keys(dadosAssinatura).length) {
+          await repository.updateAssinatura(assinatura.id, dadosAssinatura, tx);
+        }
+      }
+    }
 
-    const dadosAssinatura = {};
-    if (status) dadosAssinatura.statusAssinatura = status;
-    if (planoId !== undefined) dadosAssinatura.planoId = planoId || null;
-    if (status === "Cancelado") dadosAssinatura.dataFim = assinatura.dataFim || parseDateOnly(todayISO());
-    if (status === "Ativo") dadosAssinatura.dataFim = null;
-
-    if (Object.keys(dadosAssinatura).length) await repository.updateAssinatura(assinatura.id, dadosAssinatura, tx);
+    if (body.isFuncionario !== undefined) {
+      const funcionario = await repository.findFuncionarioAtivo(id, tx);
+      if (body.isFuncionario === false && funcionario) {
+        await repository.softDeleteFuncionario(funcionario.id, new Date(), tx);
+      } else if (body.isFuncionario === true && !funcionario) {
+        await repository.createFuncionario(
+          id,
+          {
+            cargoId: body.cargo_id || null,
+            dataAdmissao: dataAdmissao || parseDateOnly(todayISO()),
+            status: "Ativo",
+          },
+          tx,
+        );
+      } else if (body.isFuncionario === true && funcionario) {
+        const dadosFuncionario = {};
+        if (body.cargo_id !== undefined) dadosFuncionario.cargoId = body.cargo_id || null;
+        if (dataAdmissao) dadosFuncionario.dataAdmissao = dataAdmissao;
+        if (Object.keys(dadosFuncionario).length) {
+          await repository.updateFuncionario(funcionario.id, dadosFuncionario, tx);
+        }
+      }
+    }
 
     return atualizada;
   });
@@ -190,6 +260,7 @@ module.exports = {
   listarPlanos,
   listarCargos,
   indicadores,
+  resumoDashboard,
   criar,
   atualizar,
   excluir,

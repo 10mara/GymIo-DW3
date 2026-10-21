@@ -7,12 +7,18 @@
 const { PrismaClient } = require("@prisma/client");
 const env = require("./env");
 
+const databaseUrl = new URL(env.databaseUrl);
+if (!databaseUrl.searchParams.has("connection_limit")) {
+  databaseUrl.searchParams.set("connection_limit", String(env.databaseConnectionLimit));
+}
+
 // Em desenvolvimento (nodemon) o módulo pode ser recarregado: reaproveita a instância.
 const globalRef = globalThis;
 
 const prisma =
   globalRef.__gymioPrisma ||
   new PrismaClient({
+    datasources: { db: { url: databaseUrl.toString() } },
     log: env.isProd ? ["error"] : ["warn", "error"],
   });
 

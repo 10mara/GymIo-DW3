@@ -6,8 +6,6 @@ const {
   formatDateOnly,
   startOfDay,
   addDaysISO,
-  localDateISO,
-  localHour,
   weekdayLabel,
 } = require("../../utils/date");
 const repository = require("./acesso.repository");
@@ -141,19 +139,16 @@ async function listarPorAluno(alunoId, query = {}) {
 async function estatisticasDashboard() {
   const hoje = todayISO();
   const dias = Array.from({ length: 7 }, (_, i) => addDaysISO(hoje, i - 6)); // do mais antigo até hoje
-  const entradas = await repository.findEntradasDesde(startOfDay(dias[0]));
-
   const porDia = new Map(dias.map((dia) => [dia, 0]));
   const porHoraHoje = new Map();
+  const entradasAgrupadas = await repository.resumirEntradasDashboard(
+    startOfDay(dias[0]),
+    startOfDay(addDaysISO(hoje, 1)),
+  );
 
-  entradas.forEach((instante) => {
-    const dia = localDateISO(instante);
-    if (!porDia.has(dia)) return;
-    porDia.set(dia, porDia.get(dia) + 1);
-    if (dia === hoje) {
-      const hora = localHour(instante);
-      porHoraHoje.set(hora, (porHoraHoje.get(hora) || 0) + 1);
-    }
+  entradasAgrupadas.forEach(({ dia, hora, total }) => {
+    porDia.set(dia, (porDia.get(dia) || 0) + total);
+    if (dia === hoje) porHoraHoje.set(hora, (porHoraHoje.get(hora) || 0) + total);
   });
 
   // Maior movimento; em empate vence o horário mais cedo (resultado determinístico).

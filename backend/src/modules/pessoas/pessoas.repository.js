@@ -27,9 +27,12 @@ const includeListagem = {
   },
 };
 
-const findAll = () =>
+const findAll = (tipo) =>
   prisma.pessoa.findMany({
-    where: { deletedAt: null },
+    where: {
+      deletedAt: null,
+      ...(tipo === "aluno" ? { alunos: { some: { deletedAt: null } } } : {}),
+    },
     include: includeListagem,
     orderBy: [{ createdAt: { sort: "desc", nulls: "last" } }, { id: "desc" }],
   });
@@ -58,7 +61,24 @@ const updatePessoa = (id, data, db = prisma) => db.pessoa.update({ where: { id }
 const findAlunoAtivo = (pessoaId, db = prisma) =>
   db.aluno.findFirst({ where: { pessoaId, deletedAt: null }, select: { id: true } });
 
+const createAlunoCompleto = (pessoaId, aluno, assinatura, db = prisma) =>
+  db.aluno.create({
+    data: {
+      pessoaId,
+      ...aluno,
+      assinaturas: { create: assinatura },
+    },
+  });
+
 const updateAluno = (id, data, db = prisma) => db.aluno.update({ where: { id }, data });
+
+const softDeleteAluno = async (id, agora, db = prisma) => {
+  await db.assinatura.updateMany({
+    where: { alunoId: id, deletedAt: null },
+    data: { deletedAt: agora },
+  });
+  await db.aluno.update({ where: { id }, data: { deletedAt: agora } });
+};
 
 const findAssinaturaMaisRecente = (alunoId, db = prisma) =>
   db.assinatura.findFirst({
@@ -68,10 +88,31 @@ const findAssinaturaMaisRecente = (alunoId, db = prisma) =>
 
 const updateAssinatura = (id, data, db = prisma) => db.assinatura.update({ where: { id }, data });
 
+const findFuncionarioAtivo = (pessoaId, db = prisma) =>
+  db.funcionario.findFirst({ where: { pessoaId, deletedAt: null }, select: { id: true } });
+
+const createFuncionario = (pessoaId, data, db = prisma) =>
+  db.funcionario.create({ data: { pessoaId, ...data } });
+
+const updateFuncionario = (id, data, db = prisma) =>
+  db.funcionario.update({ where: { id }, data });
+
+const softDeleteFuncionario = (id, agora, db = prisma) =>
+  db.funcionario.update({
+    where: { id },
+    data: { deletedAt: agora, status: "Inativo" },
+  });
+
 /** Exclusão lógica da pessoa e de tudo que depende dela (evita alunos/funcionários "órfãos"). */
 const softDeleteCompleto = async (id, agora, db) => {
   await db.pessoa.update({ where: { id }, data: { deletedAt: agora } });
-  await db.aluno.updateMany({ where: { pessoaId: id, deletedAt: null }, data: { deletedAt: agora } });
+  const alunos = await db.aluno.findMany({
+    where: { pessoaId: id, deletedAt: null },
+    select: { id: true },
+  });
+  for (const aluno of alunos) {
+    await softDeleteAluno(aluno.id, agora, db);
+  }
   await db.funcionario.updateMany({
     where: { pessoaId: id, deletedAt: null },
     data: { deletedAt: agora, status: "Inativo" },
@@ -98,6 +139,34 @@ const countCancelamentos = (inicio, fim) =>
     where: { deletedAt: null, statusAssinatura: "Cancelado", dataFim: { gte: inicio, lt: fim } },
   });
 
+const resumoDashboard = (inicioAtual, inicioProximo, inicioAnterior) =>
+  prisma.$queryRaw`
+    SELECT
+      COUNT(*) FILTER (
+        WHERE LOWER(a.status) = 'ativo'
+      )::int AS "alunosAtivos",
+      COUNT(*) FILTER (
+        WHERE a.data_matricula >= ${inicioAtual}
+          AND a.data_matricula < ${inicioProximo}
+      )::int AS "novosMes",
+      COUNT(*) FILTER (
+        WHERE a.data_matricula >= ${inicioAnterior}
+          AND a.data_matricula < ${inicioAtual}
+      )::int AS "novosMesAnterior",
+      (
+        SELECT COUNT(*)::int
+        FROM assinatura s
+        WHERE s.deleted_at IS NULL
+          AND LOWER(s.status_assinatura) = 'cancelado'
+          AND s.data_fim >= ${inicioAtual}
+          AND s.data_fim < ${inicioProximo}
+      ) AS cancelamentos
+    FROM aluno a
+    INNER JOIN pessoa p ON p.id = a.pessoa_id
+    WHERE a.deleted_at IS NULL
+      AND p.deleted_at IS NULL
+  `;
+
 const listPlanos = () => prisma.plano.findMany({ where: { deletedAt: null } });
 
 const listCargos = () =>
@@ -114,14 +183,21 @@ module.exports = {
   createCompleta,
   updatePessoa,
   findAlunoAtivo,
+  createAlunoCompleto,
   updateAluno,
+  softDeleteAluno,
   findAssinaturaMaisRecente,
   updateAssinatura,
+  findFuncionarioAtivo,
+  createFuncionario,
+  updateFuncionario,
+  softDeleteFuncionario,
   softDeleteCompleto,
   countAlunos,
   countAlunosAtivos,
   countNovosAlunos,
   countCancelamentos,
+  resumoDashboard,
   listPlanos,
   listCargos,
 };

@@ -35,9 +35,9 @@ const countAssinaturas = () => prisma.assinatura.count({ where: { deletedAt: nul
 const countAssinaturasAtivas = () =>
   prisma.assinatura.count({ where: { deletedAt: null, ...igual("statusAssinatura", "ativo") } });
 
-const findUltimasMatriculas = (take = 5) =>
+const findUltimasMatriculas = (take = 5, ate) =>
   prisma.assinatura.findMany({
-    where: { deletedAt: null },
+    where: { deletedAt: null, ...(ate && { dataAssinatura: { lte: ate } }) },
     orderBy: [{ dataAssinatura: { sort: "desc", nulls: "last" } }, { id: "desc" }],
     take,
     select: {
@@ -60,6 +60,50 @@ const somarMovimentacoes = async (tipos, desde, ate) => {
 const somarReceitas = (desde, ate) => somarMovimentacoes(TIPOS_RECEITA, desde, ate);
 const somarDespesas = (desde, ate) => somarMovimentacoes(TIPOS_DESPESA, desde, ate);
 
+const resumoFinanceiro = (inicioAtual, inicioProximo, inicioAnterior) =>
+  prisma.$queryRaw`
+    SELECT
+      COALESCE(SUM(valor) FILTER (
+        WHERE data_movimentacao >= ${inicioAtual}
+          AND data_movimentacao < ${inicioProximo}
+          AND LOWER(tipo_movimentacao) IN ('receber', 'entrada')
+      ), 0) AS receita,
+      COALESCE(SUM(valor) FILTER (
+        WHERE data_movimentacao >= ${inicioAnterior}
+          AND data_movimentacao < ${inicioAtual}
+          AND LOWER(tipo_movimentacao) IN ('receber', 'entrada')
+      ), 0) AS "receitaAnterior",
+      COALESCE(SUM(valor) FILTER (
+        WHERE data_movimentacao >= ${inicioAtual}
+          AND data_movimentacao < ${inicioProximo}
+          AND LOWER(tipo_movimentacao) IN ('pagar', 'saida', 'saída')
+      ), 0) AS despesa
+    FROM movimentacao_financeira
+    WHERE deleted_at IS NULL
+      AND data_movimentacao >= ${inicioAnterior}
+      AND data_movimentacao < ${inicioProximo}
+  `;
+
+const resumoAssinaturas = (hoje) =>
+  prisma.$queryRaw`
+    SELECT
+      COUNT(*) FILTER (WHERE deleted_at IS NULL)::int AS total,
+      COUNT(*) FILTER (
+        WHERE deleted_at IS NULL
+          AND LOWER(status_assinatura) = 'ativo'
+      )::int AS ativas,
+      COUNT(*) FILTER (
+        WHERE deleted_at IS NULL
+          AND LOWER(status_assinatura) = 'inadimplente'
+      )::int AS inadimplentes,
+      COUNT(*) FILTER (
+        WHERE deleted_at IS NULL
+          AND data_fim = ${hoje}
+          AND (status_assinatura IS NULL OR LOWER(status_assinatura) <> 'cancelado')
+      )::int AS "vencendoHoje"
+    FROM assinatura
+  `;
+
 module.exports = {
   countInadimplentes,
   countVencendoEm,
@@ -68,4 +112,6 @@ module.exports = {
   findUltimasMatriculas,
   somarReceitas,
   somarDespesas,
+  resumoFinanceiro,
+  resumoAssinaturas,
 };

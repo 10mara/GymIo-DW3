@@ -1,4 +1,5 @@
 const { prisma } = require("../../config/prisma");
+const env = require("../../config/env");
 
 /**
  * Todo o acesso ao banco do módulo fica aqui (Prisma). Funções que participam de uma transação
@@ -63,6 +64,20 @@ const findEntradasDesde = async (desde) => {
   });
   return linhas.map((l) => l.dataHoraAcesso).filter(Boolean);
 };
+
+const resumirEntradasDashboard = (desde, ate) =>
+  prisma.$queryRaw`
+    SELECT
+      TO_CHAR(data_hora_acesso AT TIME ZONE ${env.timezone}, 'YYYY-MM-DD') AS dia,
+      EXTRACT(HOUR FROM data_hora_acesso AT TIME ZONE ${env.timezone})::int AS hora,
+      COUNT(*)::int AS total
+    FROM acesso
+    WHERE deleted_at IS NULL
+      AND tipo_acesso = 'entrada'
+      AND data_hora_acesso >= ${desde}
+      AND data_hora_acesso < ${ate}
+    GROUP BY 1, 2
+  `;
 
 const existsAluno = async (id) =>
   Boolean(await prisma.aluno.findFirst({ where: { id, deletedAt: null }, select: { id: true } }));
@@ -139,6 +154,7 @@ const comLockDoAluno = (alunoId, fn) =>
 module.exports = {
   findAll,
   findEntradasDesde,
+  resumirEntradasDashboard,
   existsAluno,
   findAlunoPorCpf,
   findAssinaturasDoAluno,

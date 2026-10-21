@@ -1,7 +1,7 @@
 const asyncHandler = require("../../utils/asyncHandler");
 const service = require("./pessoas.service");
 
-exports.listar = asyncHandler(async (req, res) => res.json(await service.listar()));
+exports.listar = asyncHandler(async (req, res) => res.json(await service.listar(req.query.tipo)));
 exports.buscarPorId = asyncHandler(async (req, res) => res.json(await service.buscarPorId(req.params.id)));
 exports.criar = asyncHandler(async (req, res) => res.status(201).json(await service.criar(req.body || {})));
 exports.atualizar = asyncHandler(async (req, res) =>

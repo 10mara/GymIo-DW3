@@ -22,16 +22,16 @@ function toListItem(pessoa) {
 
     isAluno: !!aluno,
     aluno_id: aluno?.id || null,
-    matricula: formatDateOnly(aluno?.dataMatricula) || "-",
+    matricula: formatDateOnly(aluno?.dataMatricula),
 
     plano: assinatura?.plano?.nomePlano || "-",
-    plano_id: assinatura?.planoId || "-",
+    plano_id: assinatura?.planoId || null,
 
     status: assinatura?.statusAssinatura || aluno?.status || funcionario?.status || "-",
 
     isFuncionario: !!funcionario,
-    cargo_id: funcionario?.cargoId || "-",
-    data_admissao: formatDateOnly(funcionario?.dataAdmissao) || "-",
+    cargo_id: funcionario?.cargoId || null,
+    data_admissao: formatDateOnly(funcionario?.dataAdmissao),
 
     senha: pessoa.password ? "••••••••" : "-",
   };

@@ -61,7 +61,7 @@ Este cookie é utilizado automaticamente para acessar as rotas protegidas.
 
 | Método | Endpoint |
 |---------|----------|
-| GET | /api/pessoas |
+| GET | /api/pessoas (opcional: `?tipo=aluno` para listar somente alunos) |
 | POST | /api/pessoas |
 | PUT | /api/pessoas/{id} |
 | DELETE | /api/pessoas/{id} |

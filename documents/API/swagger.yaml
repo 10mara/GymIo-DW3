@@ -430,14 +430,14 @@ components:
         dataNascimento: { type: string, format: date, nullable: true }
         endereco: { type: string, nullable: true }
         isAluno: { type: boolean }
-        aluno_id: { type: string, nullable: true }
-        matricula: { type: string }
+        aluno_id: { type: string, format: uuid, nullable: true }
+        matricula: { type: string, format: date, nullable: true }
         plano: { type: string }
-        plano_id: { type: string }
+        plano_id: { type: string, format: uuid, nullable: true }
         status: { type: string }
         isFuncionario: { type: boolean }
-        cargo_id: { type: string }
-        data_admissao: { type: string }
+        cargo_id: { type: string, format: uuid, nullable: true }
+        data_admissao: { type: string, format: date, nullable: true }
         senha: { type: string, description: Sempre mascarada }
     PessoaCreate:
       type: object
@@ -470,6 +470,10 @@ components:
         status: { type: string, enum: [Ativo, Inadimplente, Cancelado] }
         dataMatricula: { type: string, format: date }
         plano_id: { type: string, format: uuid, nullable: true }
+        isAluno: { type: boolean, description: "Cria o vínculo quando true e o exclui logicamente quando false" }
+        isFuncionario: { type: boolean, description: "Cria o vínculo quando true e o exclui logicamente quando false" }
+        cargo_id: { type: string, format: uuid, nullable: true }
+        dataAdmissao: { type: string, format: date }
     FuncionarioCreate:
       type: object
       required: [pessoa_id, cargo_id]
@@ -588,6 +592,12 @@ paths:
     get:
       tags: [Pessoas]
       summary: Lista pessoas (não excluídas) com dados de aluno, plano e funcionário
+      parameters:
+        - name: tipo
+          in: query
+          required: false
+          description: Use "aluno" para listar apenas pessoas com vínculo ativo de aluno.
+          schema: { type: string, enum: [aluno] }
       responses:
         "200":
           description: Lista de pessoas
@@ -624,7 +634,7 @@ paths:
         "404": { description: Não encontrada }
     put:
       tags: [Pessoas]
-      summary: Atualiza pessoa, aluno e assinatura mais recente (campos opcionais)
+      summary: Atualiza pessoa e seus vínculos de aluno e funcionário
       requestBody:
         content:
           application/json:

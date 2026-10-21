@@ -29,7 +29,7 @@ function montar(estado = {}) {
     comLockDoAluno: async (id, fn) => { chamadas.lockAlunos.push(id); return fn({}); },
     existsAluno: async () => true,
     findAll: async () => [],
-    findEntradasDesde: async () => [],
+    resumirEntradasDashboard: async () => [],
   });
   return { service: freshRequire("modules/acesso/acesso.service.js"), chamadas };
 }
@@ -150,13 +150,15 @@ test("estatisticasDashboard: hoje, 7 dias, pico — contados no fuso de São Pau
   const { todayISO } = require("../src/utils/date");
   const hoje = todayISO();
   const { startOfDay, addDaysISO } = require("../src/utils/date");
-  const h = (iso, hora) => new Date(startOfDay(iso).getTime() + hora * 3600_000 + 60_000);
-  const entradas = [
-    h(hoje, 7), h(hoje, 18), h(hoje, 18), h(hoje, 18), // pico às 18h
-    h(addDaysISO(hoje, -1), 9),
-    h(addDaysISO(hoje, -6), 10),
+  const entradasAgrupadas = [
+    { dia: hoje, hora: 7, total: 1 },
+    { dia: hoje, hora: 18, total: 3 },
+    { dia: addDaysISO(hoje, -1), hora: 9, total: 1 },
+    { dia: addDaysISO(hoje, -6), hora: 10, total: 1 },
   ];
-  stubModule("modules/acesso/acesso.repository.js", { findEntradasDesde: async () => entradas });
+  stubModule("modules/acesso/acesso.repository.js", {
+    resumirEntradasDashboard: async () => entradasAgrupadas,
+  });
   const s = freshRequire("modules/acesso/acesso.service.js");
   const r = await s.estatisticasDashboard();
   assert.equal(r.acessosHoje, 4);
@@ -168,7 +170,7 @@ test("estatisticasDashboard: hoje, 7 dias, pico — contados no fuso de São Pau
 });
 
 test("estatisticasDashboard: sem entradas -> zeros e '-'", async () => {
-  stubModule("modules/acesso/acesso.repository.js", { findEntradasDesde: async () => [] });
+  stubModule("modules/acesso/acesso.repository.js", { resumirEntradasDashboard: async () => [] });
   const r = await freshRequire("modules/acesso/acesso.service.js").estatisticasDashboard();
   assert.equal(r.acessosHoje, 0);
   assert.equal(r.horarioPico, "-");

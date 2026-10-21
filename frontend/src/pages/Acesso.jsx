@@ -349,14 +349,14 @@ export default function ControleAcesso() {
 
           <div className="catraca-header">
             <h3>Simulador de Catraca</h3>
-            <p>Digite o CPF ou passe o cartão</p>
+            <p>Informe o CPF cadastrado do aluno</p>
           </div>
 
           <div className="catraca-form">
 
             <input
               type="text"
-              placeholder="Digite o CPF ou código do cartão..."
+              placeholder="Digite o CPF do aluno..."
               value={identificador}
               onChange={(e) => setIdentificador(e.target.value)}
             />

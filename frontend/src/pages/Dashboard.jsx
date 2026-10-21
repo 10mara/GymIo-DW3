@@ -21,7 +21,7 @@ export default function Dashboard() {
     receitaMensal: "0",
     receitaMudanca: "0%",
     inadimplentes: 0,
-    inadimplentesMudanca: "0",
+    inadimplentesMudanca: "—",
     acessosHoje: 0,
     frequenciaTotal: 0,
     horarioPico: "-",
@@ -31,15 +31,20 @@ export default function Dashboard() {
 
   const [atividades, setAtividades] = useState([]);
   const [frequenciaSemanal, setFrequenciaSemanal] = useState([]);
+  const [erro, setErro] = useState("");
 
   useEffect(() => {
     let intervalo;
+    let requisicaoEmAndamento = false;
 
     async function carregarDashboard() {
+      if (requisicaoEmAndamento) return;
+      requisicaoEmAndamento = true;
       try {
-        const resposta = await api.get("/dashboard");
+        const resposta = await api.get("/dashboard/resumo");
         const dados = resposta.data;
 
+        setErro("");
         setStats({
           alunosAtivos:
             dados.alunosAtivos ?? 0,
@@ -57,7 +62,7 @@ export default function Dashboard() {
             dados.inadimplentes ?? 0,
 
           inadimplentesMudanca:
-            dados.inadimplentesMudanca ?? "0",
+          dados.inadimplentesMudanca ?? "—",
 
           acessosHoje:
             dados.acessosHoje ?? 0,
@@ -91,6 +96,12 @@ export default function Dashboard() {
           "Erro ao carregar dados do Dashboard:",
           erro
         );
+        setErro(
+          erro.response?.data?.erro ||
+            "Não foi possível atualizar os dados do Dashboard.",
+        );
+      } finally {
+        requisicaoEmAndamento = false;
       }
     }
 
@@ -123,6 +134,11 @@ export default function Dashboard() {
     };
   }, []);
 
+  const maxFrequencia = Math.max(
+    ...frequenciaSemanal.map((dia) => dia.total),
+    1,
+  );
+
   return (
     <div className="dashboard-layout">
       <Sidebar />
@@ -136,6 +152,8 @@ export default function Dashboard() {
           </div>
         </header>
 
+        {erro && <p className="dashboard-error" role="alert">{erro}</p>}
+
         {/* Grade de cartões de indicadores (KPIs) de topo */}
         <section className="stats-grid">
 
@@ -148,7 +166,7 @@ export default function Dashboard() {
               </strong>
 
               <small className="positivo">
-                {stats.alunosAtivosMudanca} vs. mês anterior
+                {stats.alunosAtivosMudanca} em novas matrículas vs. mês anterior
               </small>
             </div>
 
@@ -184,7 +202,7 @@ export default function Dashboard() {
               </strong>
 
               <small className="negativo">
-                {stats.inadimplentesMudanca} vs. mês anterior
+                Sem histórico comparativo
               </small>
             </div>
 
@@ -243,19 +261,32 @@ export default function Dashboard() {
             </div>
 
             <div className="chart-placeholder">
+              {frequenciaSemanal.length ? (
+                <div className="frequency-chart">
+                  {frequenciaSemanal.map((dia) => {
+                    const altura = dia.total
+                      ? Math.max((dia.total / maxFrequencia) * 100, 4)
+                      : 0;
 
-              <div className="week-days">
-
-                <span>Seg</span>
-                <span>Ter</span>
-                <span>Qua</span>
-                <span>Qui</span>
-                <span>Sex</span>
-                <span>Sáb</span>
-                <span>Dom</span>
-
-              </div>
-
+                    return (
+                      <div className="frequency-day" key={dia.data}>
+                        <span className="frequency-total">{dia.total}</span>
+                        <div className="frequency-bar-track">
+                          <div
+                            className="frequency-bar"
+                            style={{ height: `${altura}%` }}
+                            role="img"
+                            aria-label={`${dia.total} acessos`}
+                          />
+                        </div>
+                        <span className="frequency-label">{dia.dia}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="frequency-empty">Sem dados de frequência nesta semana.</p>
+              )}
             </div>
 
           </article>
@@ -303,11 +334,11 @@ export default function Dashboard() {
 
                   <div>
                     <strong>
-                      Taxa Retenção
+                      Assinaturas ativas
                     </strong>
 
                     <span>
-                      Alunos renovando
+                      Do total de assinaturas
                     </span>
                   </div>
 

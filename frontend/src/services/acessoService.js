@@ -27,18 +27,18 @@ export function normalizarAcesso(acesso) {
 }
 
 export async function listarAcessos() {
-  const response = await api.get("/acessos");
+  const response = await api.get("/acesso");
   const acessos = Array.isArray(response.data) ? response.data : [];
 
   return acessos.map(normalizarAcesso);
 }
 
 export async function registrarEntrada(identificador) {
-  const response = await api.post("/acessos/entrada", { identificador });
+  const response = await api.post("/acesso/entrada", { identificador });
   return response.data;
 }
 
 export async function registrarSaida(identificador) {
-  const response = await api.post("/acessos/saida", { identificador });
+  const response = await api.post("/acesso/saida", { identificador });
   return response.data;
 }

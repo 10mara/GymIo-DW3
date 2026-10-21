@@ -9,6 +9,11 @@ function required(name) {
 }
 
 const nodeEnv = process.env.NODE_ENV || "development";
+const databaseConnectionLimit = Number(process.env.DATABASE_CONNECTION_LIMIT || 5);
+
+if (!Number.isInteger(databaseConnectionLimit) || databaseConnectionLimit < 1) {
+  throw new Error("DATABASE_CONNECTION_LIMIT deve ser um inteiro positivo.");
+}
 
 const env = {
   nodeEnv,
@@ -18,6 +23,7 @@ const env = {
 
   // Usada pelo Prisma (schema.prisma lê direto de process.env.DATABASE_URL)
   databaseUrl: required("DATABASE_URL"),
+  databaseConnectionLimit,
 
   jwtSecret: required("JWT_SECRET"),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "8h",

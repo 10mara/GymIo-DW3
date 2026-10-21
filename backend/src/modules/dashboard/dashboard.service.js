@@ -27,6 +27,7 @@ const iniciais = (nome = "") =>
     .toUpperCase();
 
 function tempoRelativo(data, hoje) {
+  if (!(data instanceof Date) || Number.isNaN(data.getTime())) return "Recente";
   const iso = formatDateOnly(data);
   if (!iso) return "Recente";
   if (iso === hoje) return "Hoje";
@@ -46,7 +47,7 @@ async function alunos() {
     repository.countVencendoEm(parseDateOnly(hoje)),
     repository.countAssinaturas(),
     repository.countAssinaturasAtivas(),
-    repository.findUltimasMatriculas(5),
+    repository.findUltimasMatriculas(5, parseDateOnly(hoje)),
   ]);
 
   const atividades = ultimas.map((item) => {
@@ -71,25 +72,26 @@ async function alunos() {
     cancelamentos: indicadoresMes.cancelamentos,
     inadimplentes,
     // Sem histórico de inadimplência no banco não há como comparar com o mês anterior.
-    inadimplentesMudanca: "0",
+    inadimplentesMudanca: "—",
     vencendoHoje,
     taxaRetencao: total > 0 ? `${Math.round((ativas / total) * 100)}%` : "0%",
     atividades,
   };
 }
 
-async function financeiro() {
+async function financeiro({ incluirInadimplentes = true } = {}) {
   const hoje = todayISO();
   const inicioMes = startOfDay(firstDayOfMonthISO(hoje));
   const inicioProximo = startOfDay(firstDayOfMonthISO(hoje, 1));
   const inicioAnterior = startOfDay(firstDayOfMonthISO(hoje, -1));
 
-  const [receita, receitaAnterior, despesa, inadimplentes] = await Promise.all([
+  const consultas = [
     repository.somarReceitas(inicioMes, inicioProximo),
     repository.somarReceitas(inicioAnterior, inicioMes),
     repository.somarDespesas(inicioMes, inicioProximo),
-    repository.countInadimplentes(),
-  ]);
+  ];
+  if (incluirInadimplentes) consultas.push(repository.countInadimplentes());
+  const [receita, receitaAnterior, despesa, inadimplentes] = await Promise.all(consultas);
 
   return {
     receitaMensal: moeda(receita),
@@ -103,27 +105,52 @@ async function financeiro() {
 
 /** Payload completo da tela Dashboard: compõe alunos + financeiro + acesso (sem duplicar consultas). */
 async function resumo() {
-  const [a, f, acessos] = await Promise.all([alunos(), financeiro(), acessoService.estatisticasDashboard()]);
+  const hoje = todayISO();
+  const inicioMes = startOfDay(firstDayOfMonthISO(hoje));
+  const inicioProximo = startOfDay(firstDayOfMonthISO(hoje, 1));
+  const inicioAnterior = startOfDay(firstDayOfMonthISO(hoje, -1));
+
+  const [a, f, assinaturas, acessos, ultimas] = await Promise.all([
+    pessoasService.resumoDashboard(),
+    repository.resumoFinanceiro(inicioMes, inicioProximo, inicioAnterior),
+    repository.resumoAssinaturas(parseDateOnly(hoje)),
+    acessoService.estatisticasDashboard(),
+    repository.findUltimasMatriculas(5, parseDateOnly(hoje)),
+  ]);
+
+  const atividades = ultimas.map((item) => {
+    const nome = item.aluno?.pessoa?.nome || "Aluno";
+    return {
+      id: item.id,
+      nome,
+      acao: `Nova matrícula - ${item.plano?.nomePlano || "Plano"}`,
+      tempo: tempoRelativo(item.dataAssinatura, hoje),
+      iniciais: iniciais(nome),
+      classe: "matricula",
+    };
+  });
 
   return {
     alunosAtivos: a.alunosAtivos,
-    alunosAtivosMudanca: a.alunosAtivosMudanca,
+    alunosAtivosMudanca: `${a.crescimento > 0 ? "+" : ""}${a.crescimento}%`,
 
-    receitaMensal: f.receitaMensal,
-    receitaMudanca: f.receitaMudanca,
+    receitaMensal: moeda(f.receita),
+    receitaMudanca: variacao(Number(f.receita), Number(f.receitaAnterior)),
 
-    inadimplentes: a.inadimplentes,
-    inadimplentesMudanca: a.inadimplentesMudanca,
+    inadimplentes: assinaturas.inadimplentes,
+    inadimplentesMudanca: "—",
 
     acessosHoje: acessos.acessosHoje,
     frequenciaTotal: acessos.frequenciaTotal,
     frequenciaSemanal: acessos.frequenciaSemanal,
     horarioPico: acessos.horarioPico,
 
-    taxaRetencao: a.taxaRetencao,
-    vencendoHoje: a.vencendoHoje,
+    taxaRetencao: assinaturas.total > 0
+      ? `${Math.round((assinaturas.ativas / assinaturas.total) * 100)}%`
+      : "0%",
+    vencendoHoje: assinaturas.vencendoHoje,
 
-    atividades: a.atividades,
+    atividades,
   };
 }
 
