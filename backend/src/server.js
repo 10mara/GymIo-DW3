@@ -58,7 +58,6 @@ const LEGADO = [
   ["/api/manutencoes", "manutencoes"],
   ["/api/financeiro", "financeiro"],
   ["/api/relatorios", "relatorios"],
-  ["/api/dashboard", "dashboard"],
 ];
 
 LEGADO.forEach(([basePath, nome]) => {

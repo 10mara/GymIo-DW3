@@ -26,6 +26,12 @@ tags:
   - name: Pessoas
     description: Operações relacionadas ao gerenciamento de pessoas.
 
+  - name: Funcionários
+    description: Gerenciamento de funcionários.
+
+  - name: Controle de Acesso
+    description: Entradas, saídas e histórico de acesso dos alunos.
+
   - name: Planos
     description: CRUD de planos da academia.
 
@@ -68,72 +74,6 @@ components:
         mensagem:
           type: string
           example: Operação realizada com sucesso.
-
-    LoginRequest:
-
-      type: object
-
-      required:
-        - email
-        - senha
-
-      properties:
-
-        email:
-          type: string
-          format: email
-          example: administrador@gymio.com
-
-        senha:
-          type: string
-          format: password
-          example: 123456
-
-    RegisterRequest:
-
-      type: object
-
-      required:
-        - nome
-        - cpf
-        - email
-        - telefone
-        - cargo
-        - senha
-        - confirmar
-
-      properties:
-
-        nome:
-          type: string
-          example: João da Silva
-
-        cpf:
-          type: string
-          example: 12345678900
-
-        email:
-          type: string
-          format: email
-          example: joao@email.com
-
-        telefone:
-          type: string
-          example: (44)99999-9999
-
-        cargo:
-          type: string
-          example: Administrador
-
-        senha:
-          type: string
-          format: password
-          example: 123456
-
-        confirmar:
-          type: string
-          format: password
-          example: 123456
 
     Pessoa:
 
@@ -340,6 +280,213 @@ components:
         pessoa:
           $ref: "#/components/schemas/Pessoa"
 
+
+    Acesso:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        aluno_id: { type: string, format: uuid }
+        data_hora_acesso: { type: string, format: date-time }
+        tipo_acesso: { type: string, enum: [entrada, bloqueado] }
+        hora_entrada: { type: [string, "null"], format: date-time }
+        hora_saida: { type: [string, "null"], format: date-time, description: "Nulo enquanto o aluno está na academia" }
+        aluno:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            status: { type: string, example: Ativo }
+            pessoa:
+              type: object
+              properties:
+                id: { type: string, format: uuid }
+                nome: { type: string }
+                cpf: { type: string }
+
+    AcessoRegistroRequest:
+      type: object
+      required: [identificador, tipo]
+      properties:
+        identificador: { type: string, example: "123.456.789-01", description: "CPF do aluno (com ou sem máscara)" }
+        tipo: { type: string, enum: [entrada, saida] }
+
+    AcessoRegistroResponse:
+      type: object
+      properties:
+        mensagem: { type: string, example: Entrada registrada com sucesso. }
+        acesso:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            aluno_id: { type: string, format: uuid }
+            data_hora_acesso: { type: string, format: date-time }
+            tipo_acesso: { type: string }
+            hora_entrada: { type: [string, "null"], format: date-time }
+            hora_saida: { type: [string, "null"], format: date-time }
+        aluno:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            nome: { type: string }
+            cpf: { type: string }
+
+    DashboardResumo:
+      type: object
+      properties:
+        alunosAtivos: { type: integer }
+        alunosAtivosMudanca: { type: string, example: "+25%" }
+        receitaMensal: { type: string, example: "1.500,00", description: "Receitas do mês atual (pt-BR)" }
+        receitaMudanca: { type: string, example: "+50%", description: "Variação sobre o mês anterior" }
+        inadimplentes: { type: integer }
+        inadimplentesMudanca: { type: string, example: "0" }
+        acessosHoje: { type: integer, description: "Entradas liberadas hoje (fuso da academia)" }
+        frequenciaTotal: { type: integer, description: "Entradas dos últimos 7 dias" }
+        frequenciaSemanal:
+          type: array
+          items:
+            type: object
+            properties:
+              data: { type: string, format: date }
+              dia: { type: string, example: Seg }
+              total: { type: integer }
+        horarioPico: { type: string, example: "18:00" }
+        taxaRetencao: { type: string, example: "75%" }
+        vencendoHoje: { type: integer }
+        atividades:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              nome: { type: string }
+              acao: { type: string }
+              tempo: { type: string }
+              iniciais: { type: string }
+              classe: { type: string }
+
+    DashboardAlunos:
+      type: object
+      properties:
+        alunosAtivos: { type: integer }
+        alunosAtivosMudanca: { type: string }
+        novosMes: { type: integer }
+        cancelamentos: { type: integer }
+        inadimplentes: { type: integer }
+        inadimplentesMudanca: { type: string }
+        vencendoHoje: { type: integer }
+        taxaRetencao: { type: string }
+        atividades: { type: array, items: { type: object } }
+
+    DashboardFinanceiro:
+      type: object
+      properties:
+        receitaMensal: { type: string, example: "1.500,00" }
+        receitaMensalValor: { type: number }
+        receitaMudanca: { type: string }
+        despesaMensalValor: { type: number }
+        saldoMensalValor: { type: number }
+        inadimplentes: { type: integer }
+
+    RegisterRequest:
+      type: object
+      required: [nome, email, telefone, cargo, senha, confirmar, cpf]
+      properties:
+        nome: { type: string }
+        email: { type: string, format: email }
+        telefone: { type: string }
+        cargo: { type: string, description: Nome de um cargo existente }
+        senha: { type: string, minLength: 6 }
+        confirmar: { type: string }
+        cpf: { type: string }
+    LoginRequest:
+      type: object
+      required: [email, senha]
+      properties:
+        email: { type: string, format: email }
+        senha: { type: string }
+    SessionUser:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        nome: { type: string }
+        email: { type: string }
+        telefone: { type: string }
+        cargo: { type: string }
+        status: { type: string, example: Ativo }
+        funcionario:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              status: { type: string }
+    PessoaListItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        nome: { type: string }
+        cpf: { type: string }
+        telefone: { type: string }
+        email: { type: string }
+        dataNascimento: { type: string, format: date, nullable: true }
+        endereco: { type: string, nullable: true }
+        isAluno: { type: boolean }
+        aluno_id: { type: string, nullable: true }
+        matricula: { type: string }
+        plano: { type: string }
+        plano_id: { type: string }
+        status: { type: string }
+        isFuncionario: { type: boolean }
+        cargo_id: { type: string }
+        data_admissao: { type: string }
+        senha: { type: string, description: Sempre mascarada }
+    PessoaCreate:
+      type: object
+      required: [nome, cpf, telefone, email]
+      properties:
+        nome: { type: string }
+        cpf: { type: string }
+        telefone: { type: string }
+        email: { type: string }
+        dataNascimento: { type: string, format: date }
+        endereco: { type: string }
+        senha: { type: string, description: Gravada com hash bcrypt }
+        isAluno: { type: boolean }
+        isFuncionario: { type: boolean }
+        plano_id: { type: string, format: uuid }
+        cargo_id: { type: string, format: uuid }
+        status: { type: string }
+        data_matricula: { type: string, format: date }
+        data_admissao: { type: string, format: date }
+    PessoaUpdate:
+      type: object
+      properties:
+        nome: { type: string }
+        cpf: { type: string }
+        telefone: { type: string }
+        email: { type: string }
+        dataNascimento: { type: string, format: date }
+        endereco: { type: string }
+        senha: { type: string, description: "Só altera se enviada e não vazia" }
+        status: { type: string, enum: [Ativo, Inadimplente, Cancelado] }
+        dataMatricula: { type: string, format: date }
+        plano_id: { type: string, format: uuid, nullable: true }
+    FuncionarioCreate:
+      type: object
+      required: [pessoa_id, cargo_id]
+      properties:
+        pessoa_id: { type: string, format: uuid }
+        cargo_id: { type: string, format: uuid }
+        data_admissao: { type: string, format: date }
+        ctps: { type: string, maxLength: 20 }
+        status: { type: string }
+    FuncionarioUpdate:
+      type: object
+      properties:
+        cargo_id: { type: string, format: uuid }
+        data_admissao: { type: string, format: date }
+        ctps: { type: string, maxLength: 20 }
+        status: { type: string }
+
 responses:
 
   Unauthorized:
@@ -377,511 +524,338 @@ responses:
 
 paths:
   /api/auth/register:
-
     post:
-      tags:
-        - Autenticação
-
-      summary: Cadastrar usuário
-
-      description: |
-        Realiza o cadastro de um novo funcionário no sistema.
-
-        O usuário é criado na autenticação do Supabase e,
-        posteriormente, são registrados os dados nas tabelas
-        pessoa e funcionario.
-
-      security: []
-
+      tags: [Autenticação]
+      summary: Cadastra um funcionário (pessoa + funcionário, em transação). Exige sessão ativa
+      security:
+        - CookieAuth: []
       requestBody:
         required: true
-
         content:
-
           application/json:
-
-            schema:
-              $ref: "#/components/schemas/RegisterRequest"
-
+            schema: { $ref: "#/components/schemas/RegisterRequest" }
       responses:
-
-        "201":
-
-          description: Usuário cadastrado com sucesso.
-
-          content:
-
-            application/json:
-
-              schema:
-                $ref: "#/components/schemas/RegisterResponse"
-
-        "400":
-
-          description: Dados inválidos ou usuário já existente.
-
-          content:
-
-            application/json:
-
-              schema:
-                $ref: "#/components/schemas/Error"
-
-              examples:
-
-                campos:
-                  value:
-                    erro: Preencha todos os campos obrigatórios.
-
-                senha:
-                  value:
-                    erro: As senhas não coincidem.
-
-                existente:
-                  value:
-                    erro: Já existe um usuário cadastrado com este CPF ou email.
-
-        "500":
-          $ref: "#/components/responses/InternalServerError"
+        "201": { description: Cadastro realizado }
+        "401": { description: Não autenticado }
+        "400": { description: Validação (campos, senhas diferentes, cargo inexistente, CPF/e-mail já usados) }
 
   /api/auth/login:
-
     post:
-
-      tags:
-        - Autenticação
-
-      summary: Realizar login
-
-      description: |
-        Autentica um usuário utilizando email e senha.
-
-        Em caso de sucesso, um cookie HTTP chamado **token**
-        é criado automaticamente contendo o access token
-        retornado pelo Supabase.
-
+      tags: [Autenticação]
+      summary: Login. Define o cookie httpOnly com o JWT
       security: []
-
       requestBody:
-
         required: true
-
         content:
-
           application/json:
-
-            schema:
-              $ref: "#/components/schemas/LoginRequest"
-
+            schema: { $ref: "#/components/schemas/LoginRequest" }
       responses:
-
         "200":
-
-          description: Login realizado.
-
-          headers:
-
-            Set-Cookie:
-
-              schema:
-                type: string
-
-              description: Cookie contendo o token de autenticação.
-
+          description: Login realizado
           content:
-
             application/json:
-
               schema:
-                $ref: "#/components/schemas/LoginResponse"
-
-        "400":
-
-          description: Campos obrigatórios não enviados.
-
-          content:
-
-            application/json:
-
-              schema:
-                $ref: "#/components/schemas/Error"
-
-              example:
-
-                erro: Email e senha são obrigatórios.
-
-        "401":
-
-          description: Credenciais inválidas.
-
-          content:
-
-            application/json:
-
-              schema:
-                $ref: "#/components/schemas/Error"
-
-              example:
-
-                erro: Email ou senha inválidos.
-
-        "500":
-          $ref: "#/components/responses/InternalServerError"
+                type: object
+                properties:
+                  mensagem: { type: string }
+                  user: { $ref: "#/components/schemas/SessionUser" }
+        "401": { description: Email ou senha inválidos (ou funcionário inativo) }
 
   /api/auth/logout:
-
     post:
-
-      tags:
-        - Autenticação
-
-      summary: Encerrar sessão
-
-      description: |
-        Remove o cookie de autenticação do navegador,
-        encerrando a sessão do usuário.
-
+      tags: [Autenticação]
+      summary: Encerra a sessão (remove o cookie)
+      security: []
       responses:
-
-        "200":
-
-          description: Logout realizado.
-
-          content:
-
-            application/json:
-
-              schema:
-
-                type: object
-
-                properties:
-
-                  mensagem:
-                    type: string
-                    example: Logout realizado
+        "200": { description: Logout realizado }
 
   /api/auth/me:
-
     get:
-
-      tags:
-        - Autenticação
-
-      summary: Dados do usuário autenticado
-
-      description: |
-        Retorna as informações do usuário atualmente autenticado.
-
-        Esta rota utiliza o middleware de autenticação e
-        requer o cookie **token** válido.
-
-      security:
-
-        - CookieAuth: []
-
+      tags: [Autenticação]
+      summary: Usuário da sessão atual
       responses:
-
         "200":
-
-          description: Usuário autenticado.
-
+          description: Sessão válida
           content:
-
             application/json:
-
               schema:
-
                 type: object
-
                 properties:
+                  user: { $ref: "#/components/schemas/SessionUser" }
+        "401": { description: Não autenticado / sessão inválida }
 
-                  user:
-                    $ref: "#/components/schemas/UsuarioLogado"
-
-        "401":
-
-          description: Usuário não autenticado ou sessão inválida.
-
+  /api/pessoas:
+    get:
+      tags: [Pessoas]
+      summary: Lista pessoas (não excluídas) com dados de aluno, plano e funcionário
+      responses:
+        "200":
+          description: Lista de pessoas
           content:
-
             application/json:
-
               schema:
-                $ref: "#/components/schemas/Error"
-
-              examples:
-
-                token:
-                  value:
-                    erro: Não autenticado
-
-                sessao:
-                  value:
-                    erro: Sessão inválida
-
-                invalido:
-                  value:
-                    erro: Token inválido
-
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-
-
-
-
-  /api/auth/register:
-
+                type: array
+                items: { $ref: "#/components/schemas/PessoaListItem" }
     post:
-      tags:
-        - Autenticação
-
-      summary: Cadastrar usuário
-
-      description: |
-        Realiza o cadastro de um novo funcionário no sistema.
-
-        O usuário é criado na autenticação do Supabase e,
-        posteriormente, são registrados os dados nas tabelas
-        pessoa e funcionario.
-
-      security: []
-
+      tags: [Pessoas]
+      summary: Cria pessoa como aluno e/ou funcionário (atômico)
       requestBody:
         required: true
-
         content:
-
           application/json:
-
-            schema:
-              $ref: "#/components/schemas/RegisterRequest"
-
+            schema: { $ref: "#/components/schemas/PessoaCreate" }
       responses:
+        "201": { description: Pessoa criada }
+        "400": { description: Validação }
+        "409": { description: CPF ou e-mail já cadastrados }
 
+  /api/pessoas/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Pessoas]
+      summary: Busca uma pessoa
+      responses:
+        "200":
+          description: Pessoa
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PessoaListItem" }
+        "404": { description: Não encontrada }
+    put:
+      tags: [Pessoas]
+      summary: Atualiza pessoa, aluno e assinatura mais recente (campos opcionais)
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PessoaUpdate" }
+      responses:
+        "200": { description: Atualizada }
+        "404": { description: Não encontrada }
+        "409": { description: CPF ou e-mail já cadastrados }
+    delete:
+      tags: [Pessoas]
+      summary: Exclusão lógica da pessoa (e de seus registros de aluno/funcionário)
+      responses:
+        "200": { description: Excluída }
+        "404": { description: Não encontrada }
+
+  /api/pessoas/total-alunos:
+    get:
+      tags: [Pessoas]
+      summary: Total de alunos ativos
+      responses:
+        "200": { description: "{ total: number }" }
+  /api/pessoas/indicadores:
+    get:
+      tags: [Pessoas]
+      summary: Novos alunos no mês, cancelamentos e crescimento (%)
+      responses:
+        "200": { description: "{ novosMes, cancelamentos, crescimento }" }
+  /api/pessoas/planos:
+    get:
+      tags: [Pessoas]
+      summary: Planos ativos (apoio ao formulário de pessoas)
+      responses:
+        "200": { description: Lista de planos }
+  /api/pessoas/cargos:
+    get:
+      tags: [Pessoas]
+      summary: Cargos ativos (apoio ao formulário de pessoas)
+      responses:
+        "200": { description: Lista de cargos }
+
+  /api/funcionarios:
+    get:
+      tags: [Funcionários]
+      summary: Lista funcionários ativos (com pessoa e cargo)
+      responses:
+        "200": { description: Lista de funcionários }
+        "401": { description: Não autenticado }
+    post:
+      tags: [Funcionários]
+      summary: Cria funcionário para uma pessoa existente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FuncionarioCreate" }
+      responses:
+        "201": { description: Criado }
+        "400": { description: Pessoa/cargo inválidos }
+        "409": { description: Pessoa já possui funcionário }
+
+  /api/funcionarios/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Funcionários]
+      summary: Busca funcionário
+      responses:
+        "200": { description: Funcionário }
+        "404": { description: Não encontrado }
+    put:
+      tags: [Funcionários]
+      summary: Atualiza cargo_id, data_admissao, ctps ou status (pessoa_id não pode mudar)
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FuncionarioUpdate" }
+      responses:
+        "200": { description: Atualizado }
+        "404": { description: Não encontrado }
+    delete:
+      tags: [Funcionários]
+      summary: Exclusão lógica (status passa a Inativo)
+      responses:
+        "200": { description: Excluído }
+        "404": { description: Não encontrado }
+
+  /api/acesso:
+    get:
+      tags: [Controle de Acesso]
+      summary: Histórico de acessos (mais recentes primeiro)
+      security: [{ CookieAuth: [] }]
+      parameters:
+        - { in: query, name: tipo, schema: { type: string, enum: [entrada, bloqueado] } }
+        - { in: query, name: busca, schema: { type: string }, description: Nome ou CPF do aluno }
+        - { in: query, name: dataInicio, schema: { type: string, format: date }, description: "AAAA-MM-DD (fuso da academia)" }
+        - { in: query, name: dataFim, schema: { type: string, format: date }, description: "AAAA-MM-DD, inclusivo" }
+        - { in: query, name: alunoId, schema: { type: string, format: uuid } }
+        - { in: query, name: limit, schema: { type: integer, default: 1000, maximum: 5000 } }
+      responses:
+        "200":
+          description: Lista de acessos
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Acesso" } }
+        "400": { description: Filtro inválido }
+        "401": { description: Não autenticado }
+    post:
+      tags: [Controle de Acesso]
+      summary: Registra entrada ou saída pelo CPF
+      description: |
+        Entrada exige aluno ativo e assinatura vigente; tentativas negadas por status/assinatura
+        ficam gravadas como "bloqueado". Saída exige uma entrada aberta.
+        Após uma saída é preciso aguardar 5 minutos para nova entrada.
+      security: [{ CookieAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcessoRegistroRequest" }
+      responses:
         "201":
+          description: Entrada registrada
+          content: { application/json: { schema: { $ref: "#/components/schemas/AcessoRegistroResponse" } } }
+        "200":
+          description: Saída registrada
+          content: { application/json: { schema: { $ref: "#/components/schemas/AcessoRegistroResponse" } } }
+        "400": { description: CPF ou tipo inválido }
+        "401": { description: Não autenticado }
+        "403": { description: Acesso bloqueado (aluno inativo ou sem assinatura ativa) }
+        "404": { description: CPF não encontrado }
+        "409": { description: Entrada já aberta (entrada) ou sem entrada aberta (saída) }
+        "429": { description: Aguarde o intervalo mínimo após a última saída }
 
-          description: Usuário cadastrado com sucesso.
-
-          content:
-
-            application/json:
-
-              schema:
-                $ref: "#/components/schemas/RegisterResponse"
-
-        "400":
-
-          description: Dados inválidos ou usuário já existente.
-
-          content:
-
-            application/json:
-
-              schema:
-                $ref: "#/components/schemas/Error"
-
-              examples:
-
-                campos:
-                  value:
-                    erro: Preencha todos os campos obrigatórios.
-
-                senha:
-                  value:
-                    erro: As senhas não coincidem.
-
-                existente:
-                  value:
-                    erro: Já existe um usuário cadastrado com este CPF ou email.
-
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-
-  /api/auth/login:
-
+  /api/acesso/entrada:
     post:
-
-      tags:
-        - Autenticação
-
-      summary: Realizar login
-
-      description: |
-        Autentica um usuário utilizando email e senha.
-
-        Em caso de sucesso, um cookie HTTP chamado **token**
-        é criado automaticamente contendo o access token
-        retornado pelo Supabase.
-
-      security: []
-
+      tags: [Controle de Acesso]
+      summary: Atalho para POST /api/acesso com tipo = entrada
+      security: [{ CookieAuth: [] }]
       requestBody:
-
         required: true
-
         content:
-
           application/json:
-
-            schema:
-              $ref: "#/components/schemas/LoginRequest"
-
+            schema: { type: object, required: [identificador], properties: { identificador: { type: string } } }
       responses:
+        "201": { description: Entrada registrada }
+        "400": { description: CPF inválido }
+        "403": { description: Acesso bloqueado }
+        "404": { description: CPF não encontrado }
+        "409": { description: Entrada já aberta }
+        "429": { description: Intervalo mínimo não cumprido }
 
-        "200":
-
-          description: Login realizado.
-
-          headers:
-
-            Set-Cookie:
-
-              schema:
-                type: string
-
-              description: Cookie contendo o token de autenticação.
-
-          content:
-
-            application/json:
-
-              schema:
-                $ref: "#/components/schemas/LoginResponse"
-
-        "400":
-
-          description: Campos obrigatórios não enviados.
-
-          content:
-
-            application/json:
-
-              schema:
-                $ref: "#/components/schemas/Error"
-
-              example:
-
-                erro: Email e senha são obrigatórios.
-
-        "401":
-
-          description: Credenciais inválidas.
-
-          content:
-
-            application/json:
-
-              schema:
-                $ref: "#/components/schemas/Error"
-
-              example:
-
-                erro: Email ou senha inválidos.
-
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-
-  /api/auth/logout:
-
+  /api/acesso/saida:
     post:
-
-      tags:
-        - Autenticação
-
-      summary: Encerrar sessão
-
-      description: |
-        Remove o cookie de autenticação do navegador,
-        encerrando a sessão do usuário.
-
+      tags: [Controle de Acesso]
+      summary: Atalho para POST /api/acesso com tipo = saida
+      security: [{ CookieAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [identificador], properties: { identificador: { type: string } } }
       responses:
+        "200": { description: Saída registrada }
+        "400": { description: CPF inválido }
+        "404": { description: CPF não encontrado }
+        "409": { description: Sem entrada aberta }
 
-        "200":
-
-          description: Logout realizado.
-
-          content:
-
-            application/json:
-
-              schema:
-
-                type: object
-
-                properties:
-
-                  mensagem:
-                    type: string
-                    example: Logout realizado
-
-  /api/auth/me:
-
+  /api/acesso/hoje:
     get:
-
-      tags:
-        - Autenticação
-
-      summary: Dados do usuário autenticado
-
-      description: |
-        Retorna as informações do usuário atualmente autenticado.
-
-        Esta rota utiliza o middleware de autenticação e
-        requer o cookie **token** válido.
-
-      security:
-
-        - CookieAuth: []
-
+      tags: [Controle de Acesso]
+      summary: Acessos de hoje (dia no fuso da academia)
+      security: [{ CookieAuth: [] }]
       responses:
-
         "200":
+          description: Lista de acessos de hoje
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Acesso" } } } }
+        "401": { description: Não autenticado }
 
-          description: Usuário autenticado.
+  /api/acesso/aluno/{id}:
+    get:
+      tags: [Controle de Acesso]
+      summary: Histórico de acessos de um aluno
+      security: [{ CookieAuth: [] }]
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid }, description: ID do aluno }
+        - { in: query, name: tipo, schema: { type: string, enum: [entrada, bloqueado] } }
+        - { in: query, name: dataInicio, schema: { type: string, format: date } }
+        - { in: query, name: dataFim, schema: { type: string, format: date } }
+        - { in: query, name: limit, schema: { type: integer, default: 1000, maximum: 5000 } }
+      responses:
+        "200":
+          description: Acessos do aluno
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Acesso" } } } }
+        "400": { description: ID ou filtro inválido }
+        "401": { description: Não autenticado }
+        "404": { description: Aluno não encontrado }
 
-          content:
+  /api/dashboard/resumo:
+    get:
+      tags: [Dashboard]
+      summary: Todos os indicadores da tela Dashboard
+      security: [{ CookieAuth: [] }]
+      responses:
+        "200":
+          description: Resumo
+          content: { application/json: { schema: { $ref: "#/components/schemas/DashboardResumo" } } }
+        "401": { description: Não autenticado }
 
-            application/json:
+  /api/dashboard/alunos:
+    get:
+      tags: [Dashboard]
+      summary: Indicadores de alunos e matrículas
+      security: [{ CookieAuth: [] }]
+      responses:
+        "200":
+          description: Indicadores de alunos
+          content: { application/json: { schema: { $ref: "#/components/schemas/DashboardAlunos" } } }
+        "401": { description: Não autenticado }
 
-              schema:
+  /api/dashboard/financeiro:
+    get:
+      tags: [Dashboard]
+      summary: Indicadores financeiros do mês atual
+      security: [{ CookieAuth: [] }]
+      responses:
+        "200":
+          description: Indicadores financeiros
+          content: { application/json: { schema: { $ref: "#/components/schemas/DashboardFinanceiro" } } }
+        "401": { description: Não autenticado }
 
-                type: object
 
-                properties:
-
-                  user:
-                    $ref: "#/components/schemas/UsuarioLogado"
-
-        "401":
-
-          description: Usuário não autenticado ou sessão inválida.
-
-          content:
-
-            application/json:
-
-              schema:
-                $ref: "#/components/schemas/Error"
-
-              examples:
-
-                token:
-                  value:
-                    erro: Não autenticado
-
-                sessao:
-                  value:
-                    erro: Sessão inválida
-
-                invalido:
-                  value:
-                    erro: Token inválido
-
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-
-        
   /api/planos:
 
     get:

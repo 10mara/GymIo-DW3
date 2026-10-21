@@ -9,6 +9,18 @@ const s = require("./pessoas.serializer");
 const BCRYPT_ROUNDS = 10;
 
 const hashSenha = (senha) => (senha ? bcrypt.hash(String(senha), BCRYPT_ROUNDS) : null);
+
+/**
+ * A listagem devolve a senha mascarada ("••••••••") e as telas de edição reenviam esse valor no PUT.
+ * Vazio ou máscara = "não alterar": sem isso o hash da máscara sobrescreveria a senha real.
+ */
+const MASCARA_SENHA = /^•+$/;
+function senhaInformada(senha) {
+  if (senha === undefined || senha === null) return undefined;
+  const valor = String(senha);
+  if (valor.trim() === "" || MASCARA_SENHA.test(valor.trim())) return undefined;
+  return valor;
+}
 const texto = (v) => (typeof v === "string" ? v.trim() : v);
 
 /* ------------------------------ consultas ------------------------------ */
@@ -26,6 +38,10 @@ async function buscarPorId(id) {
 
 async function totalAlunos() {
   return { total: await repository.countAlunos() };
+}
+
+async function contarAlunosAtivos() {
+  return repository.countAlunosAtivos();
 }
 
 async function listarPlanos() {
@@ -77,7 +93,7 @@ async function criar(body) {
       email: texto(body.email).toLowerCase(),
       dataNascimento: parseDateOnly(body.dataNascimento, "dataNascimento") ?? null,
       endereco: body.endereco || null,
-      password: await hashSenha(body.senha),
+      password: await hashSenha(senhaInformada(body.senha)),
     },
     aluno: body.isAluno ? { status, dataMatricula } : null,
     assinatura: body.isAluno
@@ -120,7 +136,8 @@ async function atualizar(id, body) {
     endereco: body.endereco,
   };
   // Só troca a senha se uma nova foi informada
-  if (body.senha !== undefined && body.senha !== "") dadosPessoa.password = await hashSenha(body.senha);
+  const novaSenha = senhaInformada(body.senha);
+  if (novaSenha !== undefined) dadosPessoa.password = await hashSenha(novaSenha);
 
   const dataMatricula = parseDateOnly(body.dataMatricula, "dataMatricula");
   const { status, plano_id: planoId } = body;
@@ -169,6 +186,7 @@ module.exports = {
   listar,
   buscarPorId,
   totalAlunos,
+  contarAlunosAtivos,
   listarPlanos,
   listarCargos,
   indicadores,

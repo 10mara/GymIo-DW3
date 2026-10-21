@@ -83,6 +83,11 @@ const softDeleteCompleto = async (id, agora, db) => {
 const countAlunos = () =>
   prisma.aluno.count({ where: { deletedAt: null, pessoa: pessoaAtiva } });
 
+const countAlunosAtivos = () =>
+  prisma.aluno.count({
+    where: { deletedAt: null, status: { equals: "ativo", mode: "insensitive" }, pessoa: pessoaAtiva },
+  });
+
 const countNovosAlunos = (inicio, fim) =>
   prisma.aluno.count({
     where: { deletedAt: null, pessoa: pessoaAtiva, dataMatricula: { gte: inicio, lt: fim } },
@@ -114,6 +119,7 @@ module.exports = {
   updateAssinatura,
   softDeleteCompleto,
   countAlunos,
+  countAlunosAtivos,
   countNovosAlunos,
   countCancelamentos,
   listPlanos,

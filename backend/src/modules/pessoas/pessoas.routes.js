@@ -1,14 +1,13 @@
 const express = require("express");
-// const authMiddleware = require("../../middlewares/authMiddleware");
+const authMiddleware = require("../../middlewares/authMiddleware");
 const { validateUuidParam } = require("../../utils/validators");
 const controller = require("./pessoas.controller");
 
 const router = express.Router();
 
-// TODO(segurança): proteger com `router.use(authMiddleware)`.
-// Hoje Pessoa.jsx e Planos.jsx usam fetch() SEM `credentials: "include"`, então o cookie não é enviado
-// e a tela quebraria. Quando o frontend enviar o cookie, descomente o require acima e a linha abaixo.
-// router.use(authMiddleware);
+// Dados pessoais (CPF, e-mail...) exigem sessão. As telas que usam fetch() enviam
+// `credentials: "include"` para o cookie httpOnly seguir junto.
+router.use(authMiddleware);
 
 router.param("id", validateUuidParam);
 
